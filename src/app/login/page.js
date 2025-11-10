@@ -1,73 +1,61 @@
 "use client";
 
-import Link from "next/link";
 import { useState } from "react";
+import { signInWithEmailAndPassword } from "firebase/auth";
+import { auth } from "@/lib/firebase";
+import { useRouter } from "next/navigation";
 
 export default function LoginPage() {
-  const [formData, setFormData] = useState({ username: "", password: "" });
+  const router = useRouter();
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
 
-  const handleChange = (e) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
-  };
-
-  const handleSubmit = (e) => {
+  const handleLogin = async (e) => {
     e.preventDefault();
-    console.log("Logging in with:", formData);
+    setError("");
+
+    try {
+      await signInWithEmailAndPassword(auth, email, password);
+      router.push("/"); // redirect after successful login
+    } catch (err) {
+      setError("Invalid email or password.");
+      console.error(err);
+    }
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-100">
-      <div className="bg-white shadow-md rounded-2xl p-8 w-full max-w-md">
-        <h1 className="text-3xl font-semibold text-center mb-6 text-gray-800">
-          Welcome
-        </h1>
+    <div className="form-container">
+      <h2>Welcome Back</h2>
+      <form onSubmit={handleLogin}>
+        <div className="form-group">
+          <label>Email:</label>
+          <input
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            required
+          />
+        </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="block text-gray-700 font-medium mb-2">
-              Username
-            </label>
-            <input
-              type="text"
-              name="username"
-              value={formData.username}
-              onChange={handleChange}
-              placeholder="Enter your username"
-              className="w-full p-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-400"
-              required
-            />
-          </div>
+        <div className="form-group">
+          <label>Password:</label>
+          <input
+            type="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            required
+          />
+        </div>
 
-          <div>
-            <label className="block text-gray-700 font-medium mb-2">
-              Password
-            </label>
-            <input
-              type="password"
-              name="password"
-              value={formData.password}
-              onChange={handleChange}
-              placeholder="Enter your password"
-              className="w-full p-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-400"
-              required
-            />
-          </div>
+        <button type="submit">Login</button>
+      </form>
 
-          <button
-            type="submit"
-            className="w-full bg-blue-500 hover:bg-blue-600 text-white py-3 rounded-xl font-semibold transition duration-200"
-          >
-            Login
-          </button>
-        </form>
+      {error && <p className="error-text">{error}</p>}
 
-        <p className="text-center text-gray-600 mt-6">
-          Don’t have an account?{" "}
-          <Link href="/signup" className="text-blue-500 hover:underline font-medium">
-            Sign up
-          </Link>
-        </p>
-      </div>
+      <p className="redirect-text">
+        Don’t have an account? <a href="/signup">Sign up</a>
+      </p>
     </div>
- );
+  );
 }
