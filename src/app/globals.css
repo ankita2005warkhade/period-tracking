@@ -333,3 +333,181 @@ button:hover {
   cursor: pointer;
 }
 
+/* Container for the insight */
+.ai-result {
+  background: #fff7fc;
+  border: 1px solid #ffd6ea;
+  padding: 20px;
+  border-radius: 14px;
+  margin-top: 20px;
+  line-height: 1.7;
+  color: #444;
+  box-shadow: 0px 4px 12px rgba(255, 120, 180, 0.18);
+}
+
+/* Top section: Mood + Symptoms */
+.ai-top {
+  background: #ffe3f0;
+  padding: 12px 15px;
+  border-radius: 10px;
+  margin-bottom: 15px;
+  font-size: 15px;
+  line-height: 1.5;
+}
+
+/* Insight heading */
+.ai-result h2 {
+  font-size: 24px;
+  color: #ff4da6;
+  margin-bottom: 14px;
+}
+
+/* Text inside insight */
+.ai-result-text p {
+  margin-bottom: 10px;
+}
+
+/* Bullet points */
+.ai-result-text ul {
+  padding-left: 20px;
+  margin-bottom: 10px;
+}
+
+.ai-result-text li {
+  margin-bottom: 5px;
+}
+.summary-page {
+  max-width: 750px;
+  margin: auto;
+  padding: 20px;
+  font-family: "Poppins", sans-serif;
+}
+
+.summary-title {
+  text-align: center;
+  color: #ff4fa3;
+  margin-bottom: 25px;
+  font-size: 28px;
+}
+
+.summary-card {
+  background: #fff9fc;
+  border: 1px solid #ffd3e8;
+  padding: 18px;
+  border-radius: 14px;
+  margin-bottom: 18px;
+  box-shadow: 0px 4px 12px rgba(255, 123, 172, 0.12);
+}
+
+.summary-card h2 {
+  color: #ff4fa3;
+  margin-bottom: 12px;
+}
+
+/* REALISTIC SOFT PROGRESS BAR */
+.progress-container {
+  width: 100%;
+  background: #ffe6f2;
+  height: 14px;
+  border-radius: 20px;
+  overflow: hidden;
+  margin: 12px 0;
+}
+
+.progress-bar {
+  height: 100%;
+  background: linear-gradient(90deg, #ff7cc2, #ff4fa3);
+  border-radius: 20px;
+  transition: width 0.6s ease;
+}
+
+.progress-text {
+  font-size: 15px;
+  color: #d63384;
+}
+
+/* DAILY INSIGHT BOX */
+.daily-insight-box {
+  background: #fff;
+  padding: 12px;
+  margin-bottom: 15px;
+  border-radius: 12px;
+  border: 1px solid #ffd6ea;
+  box-shadow: 0px 4px 10px rgba(255, 120, 170, 0.1);
+}
+.summary-page {
+  max-width: 800px;
+  margin: auto;
+  padding: 20px;
+  font-family: "Poppins", sans-serif;
+}
+
+.summary-title {
+  text-align: center;
+  color: #ff4fa3;
+  margin-bottom: 25px;
+  font-size: 28px;
+}
+
+.summary-card {
+  background: #fff9fc;
+  border: 1px solid #ffd3e8;
+  padding: 18px;
+  border-radius: 14px;
+  margin-bottom: 18px;
+  box-shadow: 0 4px 10px rgba(255, 130, 170, 0.12);
+}
+
+.summary-card h2 {
+  color: #ff4fa3;
+  margin-bottom: 12px;
+}
+
+/* Soft Health Bar */
+.progress-container {
+  width: 100%;
+  background: #ffe6f2;
+  height: 14px;
+  border-radius: 20px;
+  overflow: hidden;
+}
+
+.progress-bar {
+  height: 100%;
+  background: linear-gradient(90deg, #ff7cc2, #ff4fa3);
+  border-radius: 20px;
+  transition: width 0.5s;
+}
+
+.progress-text {
+  margin-top: 6px;
+  color: #cc2e75;
+  font-size: 14px;
+}
+
+/* Mood & Symptom Bars */
+.bar-row {
+  display: flex;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.bar-track {
+  flex: 1;
+  background: #ffe6f2;
+  height: 10px;
+  margin: 0 10px;
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.bar-fill {
+  height: 100%;
+  background: #ff7cc2;
+  border-radius: 10px;
+}
+
+/* Summary text */
+.summary-card p {
+  line-height: 1.6;
+}

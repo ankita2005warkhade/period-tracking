@@ -1,4 +1,3 @@
-// src/app/api/gemini/route.js
 import { NextResponse } from "next/server";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 
@@ -15,45 +14,61 @@ export async function POST(req) {
       );
     }
 
-    // NEW Gemini SDK client
     const genAI = new GoogleGenerativeAI(apiKey);
 
-    // BEST Free Model
     const model = genAI.getGenerativeModel({
-      model: "gemini-2.0-flash",
+      model: "gemini-2.0-flash", // Best, fast, free
     });
 
-    // The PERFECT PROMPT (copy-paste EXACT)
-    const prompt = `
-You are a supportive period and women's health assistant.
-Based on the user's mood and symptoms, provide insights in the EXACT format below.
+    // ⭐⭐ SUPER OPTIMIZED USER-CENTRIC PROMPT ⭐⭐
+   const prompt = `
+You are a warm, supportive period and women's health assistant.
 
-Mood: ${mood}
+Your job is to generate a personalized, emotionally supportive daily insight
+based STRICTLY on the user’s mood and symptoms.
+
+Start the output with:
+
+Mood: ${mood}  
 Symptoms: ${symptoms?.join(", ")}
 
-Return the response strictly in this format:
+Then write 2–3 short lines welcoming the user and introducing the insight.
+
+AFTER THAT, follow this EXACT FORMAT:
 
 ✨ Insight
 
-🌸 Daily Note:  
-- Write a short emotional + physical summary combining mood and symptoms.
+🩷 How You're Feeling Today:
+Write an emotional, caring summary combining mood and symptoms.
+Tone: empathetic, kind, validating.
 
-💡 Remedies: 
-- Give 2–3 home remedies that are simple and effective.
+🌸 What This Means for Your Body:
+Explain what these symptoms may mean physically.
+Use simple, comforting language.
 
-🧘 Tips: 
-- Provide 2 practical lifestyle or self-care tips.
+💡 Home Remedies That Can Help:
+- Provide 3–4 practical home remedies
+- Must match the user's symptoms
 
-⚠️ Warning:  
-- If symptoms look concerning, say what to watch for.  
-- If not, say: "No major warning today."
+🧘 Self-Care & Lifestyle Tips:
+- Give 2 gentle, supportive tips
 
-🌞 Reminder:
-- Give a gentle, positive reminder for the day.
+⚠️ Warning Signs to Watch:
+- Only list warning signs if relevant
+- Otherwise write: No major warning today — just listen to your body.
 
-Keep the tone warm, short, and easy to read.
-Do NOT add anything outside this format.
+🌞 A Kind Reminder for You:
+A soft, comforting closing message to make the user feel supported.
+
+IMPORTANT RULES:
+- No extra sections.
+- Use simple, human language.
+- Keep paragraphs short.
+- Do NOT repeat mood or symptoms unnecessarily.
+
+Generate today's insight now.
 `;
+
 
     const result = await model.generateContent(prompt);
     const text = result.response.text();

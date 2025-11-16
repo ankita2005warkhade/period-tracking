@@ -18,7 +18,7 @@ export default function Navbar() {
       <h1 className="text-xl font-bold text-pink-600">Period Tracker</h1>
 
       <div className="flex gap-6 text-sm font-medium">
-        <Link href="/">Home</Link>
+       
         <button onClick={handleLogout} className="text-red-500">
           Logout
         </button>
