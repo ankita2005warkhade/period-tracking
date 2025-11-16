@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { signInWithEmailAndPassword } from "firebase/auth";
 import { auth } from "@/lib/firebase";
 import { useRouter } from "next/navigation";
@@ -11,16 +11,6 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
 
-  // 🔥 DEBUG ENV VARIABLES HERE
-  useEffect(() => {
-    console.log("🔥 DEBUG FIREBASE CONFIG VALUES:");
-    console.log("API KEY:", process.env.NEXT_PUBLIC_FIREBASE_API_KEY);
-    console.log("AUTH DOMAIN:", process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN);
-    console.log("PROJECT ID:", process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID);
-    console.log("---------------------------------------------");
-  }, []);
-  // 🔥 END DEBUG
-
   const handleLogin = async (e) => {
     e.preventDefault();
     setError("");
@@ -30,14 +20,13 @@ export default function LoginPage() {
       router.push("/"); // redirect after successful login
     } catch (err) {
       setError("Invalid email or password.");
-      console.error("🔥 LOGIN ERROR:", err);
+      console.error(err);
     }
   };
 
   return (
     <div className="form-container">
       <h2>Welcome Back</h2>
-
       <form onSubmit={handleLogin}>
         <div className="form-group">
           <label>Email:</label>
