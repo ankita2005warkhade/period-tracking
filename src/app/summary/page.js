@@ -26,7 +26,7 @@ export default function SummaryPage() {
       if (!user) return;
 
       const logsRef = collection(db, "users", user.uid, "dailyLogs");
-      const q = query(logsRef, orderBy("createdAt", "asc"));
+      const q = query(logsRef, orderBy("date", "asc"));
       const snapshot = await getDocs(q);
 
       const allLogs = snapshot.docs.map((d) => ({
@@ -39,29 +39,49 @@ export default function SummaryPage() {
         return;
       }
 
-      // LATEST CYCLE = Last continuous logs
-      // (Simple rule: all logs entered since the last start date)
-      const latestCycle = allLogs; // since you store only one cycle now
-      setCycleLogs(latestCycle);
+      // -----------------------------------
+      // 🟣 STEP 1 — SORT LOGS BY DATE
+      // -----------------------------------
+      const sortedLogs = allLogs.sort(
+        (a, b) => new Date(a.date) - new Date(b.date)
+      );
 
-      // Start & End Date
-      const first = latestCycle[0].createdAt?.toDate();
-      const last = latestCycle[latestCycle.length - 1].createdAt?.toDate();
+      // -----------------------------------
+      // 🟣 STEP 2 — IDENTIFY CURRENT CYCLE
+      // -----------------------------------
+      const firstDay = new Date(sortedLogs[0].date);
+      const lastDay = new Date(sortedLogs[sortedLogs.length - 1].date);
 
-      setStartDate(first.toDateString());
-      setEndDate(last.toDateString());
+      const currentCycle = sortedLogs.filter((log) => {
+        const logDate = new Date(log.date);
+        return logDate >= firstDay && logDate <= lastDay;
+      });
 
-      const diff =
-        (last.getTime() - first.getTime()) / (1000 * 60 * 60 * 24) + 1;
+      setCycleLogs(currentCycle);
 
-      setCycleLength(diff);
+      // -----------------------------------
+      // 🟣 STEP 3 — CYCLE LENGTH (ROUND DAYS)
+      // -----------------------------------
+      const diffDays =
+        (lastDay.getTime() - firstDay.getTime()) / (1000 * 60 * 60 * 24) + 1;
 
-      // COUNT ONLY FOR THIS CYCLE
+      const roundedDays = Math.round(diffDays);
+
+      setCycleLength(roundedDays);
+
+      setStartDate(firstDay.toDateString());
+      setEndDate(lastDay.toDateString());
+
+      // -----------------------------------
+      // 🟣 STEP 4 — PATTERN CALCULATIONS
+      // -----------------------------------
       let moodMap = {};
       let symptomMap = {};
-      
-      latestCycle.forEach((log) => {
-        if (log.mood) moodMap[log.mood] = (moodMap[log.mood] || 0) + 1;
+
+      currentCycle.forEach((log) => {
+        if (log.mood) {
+          moodMap[log.mood] = (moodMap[log.mood] || 0) + 1;
+        }
 
         if (log.symptoms) {
           log.symptoms.forEach((s) => {
@@ -73,59 +93,72 @@ export default function SummaryPage() {
       setMoodCount(moodMap);
       setSymptomCount(symptomMap);
 
-      // 🎯 HEALTH SCORE CALCULATION (More realistic)
+      // -----------------------------------
+      // 🟣 STEP 5 — HEALTH SCORE
+      // -----------------------------------
       let score = 100;
 
-      // If cycle is outside normal 3–8 days
-      if (diff < 3 || diff > 8) score -= 25;
+      // Cycle < 3 or > 8 days → irregular
+      if (roundedDays < 3 || roundedDays > 8) score -= 25;
 
-      // If too many severe symptoms
+      // Too many symptoms types → lower score
       if (Object.keys(symptomMap).length > 4) score -= 15;
 
       if (score < 10) score = 10;
+
       setHealthScore(score);
 
-      // ⏳ Next Period Prediction
-      const next = new Date(first);
-      next.setDate(first.getDate() + 28);
+      // -----------------------------------
+      // 🟣 STEP 6 — NEXT PERIOD PREDICTION
+      // -----------------------------------
+      const next = new Date(firstDay);
+      next.setDate(firstDay.getDate() + 28);
       setNextPeriodDate(next.toDateString());
 
-      // 🧠 AUTO SUMMARY (DETAILED)
+      // -----------------------------------
+      // 🟣 STEP 7 — SUMMARY TEXT
+      // -----------------------------------
       const topMood =
         Object.keys(moodMap).sort((a, b) => moodMap[b] - moodMap[a])[0] || "";
 
       const topSymptom =
-        Object.keys(symptomMap).sort((a, b) => symptomMap[b] - symptomMap[a])[0] || "";
+        Object.keys(symptomMap).sort(
+          (a, b) => symptomMap[b] - symptomMap[a]
+        )[0] || "";
 
-      const insightSummary = `
-During this cycle from ${first.toDateString()} to ${last.toDateString()}, 
-your body showed a pattern of ${topSymptom.toLowerCase()} appearing most often, 
-and you commonly experienced "${topMood}" as your main mood.
+      const summary = `
+During this cycle from ${firstDay.toDateString()} to ${lastDay.toDateString()},
+your body commonly experienced ${topSymptom.toLowerCase()},
+and emotionally, your most frequent mood was "${topMood}".
 
-Your cycle lasted ${diff} days, 
-which is ${diff < 3 || diff > 8 ? "a bit irregular" : "within a healthy range"}.
+Your cycle lasted ${roundedDays} days,
+which is ${
+        roundedDays < 3 || roundedDays > 8
+          ? "slightly irregular"
+          : "within a normal and healthy range"
+      }.
 
-This month’s symptoms suggest your body was responding to hormonal changes 
-through patterns like ${topSymptom.toLowerCase()}, 
-while your emotional well-being reflected phases of ${topMood.toLowerCase()}.
+Your symptoms indicate normal hormonal changes,
+with patterns like ${topSymptom.toLowerCase()} appearing frequently,
+while your emotional balance fluctuated through phases of ${topMood.toLowerCase()}.
 
-To optimize your next cycle:
-– Keep track of sleep and hydration to reduce ${topSymptom.toLowerCase()}.  
-– Follow regular warm compresses or light stretching.  
-– Maintain a balanced mood routine with gentle breathing or journaling.
+💡 To support a healthier next cycle:
+• Stay consistent with hydration  
+• Practice gentle stretching or yoga  
+• Maintain good sleep routines  
+• Journal or practice breathing exercises for emotional balance  
 
-This summary is based on your daily logs only, making it personalized for YOU.
+This summary is fully based on your daily logs for this cycle.
       `;
 
-      setSummaryText(insightSummary);
-
+      setSummaryText(summary);
       setLoading(false);
     };
 
     getCycleData();
   }, []);
 
-  if (loading) return <p>Loading summary...</p>;
+  if (loading) return <p>Loading your cycle summary...</p>;
 
   return (
     <div className="summary-page">
@@ -160,6 +193,8 @@ This summary is based on your daily logs only, making it personalized for YOU.
       {/* Mood Pattern */}
       <div className="summary-card">
         <h2>Mood Pattern (This Cycle)</h2>
+        {Object.keys(moodCount).length === 0 && <p>No data logged.</p>}
+
         {Object.keys(moodCount).map((mood) => (
           <div className="bar-row" key={mood}>
             <span>{mood}</span>
@@ -177,6 +212,9 @@ This summary is based on your daily logs only, making it personalized for YOU.
       {/* Symptom Pattern */}
       <div className="summary-card">
         <h2>Symptom Pattern (This Cycle)</h2>
+
+        {Object.keys(symptomCount).length === 0 && <p>No data logged.</p>}
+
         {Object.keys(symptomCount).map((s) => (
           <div className="bar-row" key={s}>
             <span>{s}</span>
@@ -191,7 +229,7 @@ This summary is based on your daily logs only, making it personalized for YOU.
         ))}
       </div>
 
-      {/* Detailed Summary */}
+      {/* Summary */}
       <div className="summary-card">
         <h2>Cycle Summary</h2>
         <p style={{ whiteSpace: "pre-line" }}>{summaryText}</p>

@@ -2,7 +2,14 @@
 
 import { useState } from "react";
 import { auth, db } from "@/lib/firebase";
-import { doc, setDoc, serverTimestamp } from "firebase/firestore";
+import {
+  doc,
+  setDoc,
+  collection,
+  query,
+  getDocs,
+  orderBy,
+} from "firebase/firestore";
 import { useRouter } from "next/navigation";
 
 export default function SymptomsPage() {
@@ -34,20 +41,47 @@ export default function SymptomsPage() {
     );
   };
 
+  // ⭐ Automatically simulate next-day date for testing
   const saveLog = async (insight) => {
     const user = auth.currentUser;
     if (!user) return;
 
-    const dayId = new Date().getTime().toString();
+    // Fetch the latest log to know the last stored date
+    const logsRef = collection(db, "users", user.uid, "dailyLogs");
+    const q = query(logsRef, orderBy("date", "desc"));
+    const snapshot = await getDocs(q);
 
-    await setDoc(doc(db, "users", user.uid, "dailyLogs", dayId), {
+    let nextDate = new Date();
+
+    // If previous logs exist → take last date and add 1 day
+    if (!snapshot.empty) {
+      const lastLog = snapshot.docs[0].data();
+      if (lastLog.date) {
+        const lastDate = new Date(lastLog.date);
+
+        nextDate = new Date(lastDate);
+        nextDate.setDate(lastDate.getDate() + 1); // ⭐ NEXT DAY SIMULATION
+      }
+    }
+
+    // Create ID in YYYY-MM-DD format
+    const dateId = nextDate.toISOString().split("T")[0];
+
+    // Save this day's log
+    await setDoc(doc(db, "users", user.uid, "dailyLogs", dateId), {
+      date: dateId,
       mood: selectedMood,
       symptoms: selectedSymptoms,
       insight: insight,
-      createdAt: serverTimestamp(),
+      createdAt: nextDate,
     });
+
+    // Reset for next day
+    setSelectedMood("");
+    setSelectedSymptoms([]);
   };
 
+  // ⭐ Get AI Insight + Save Log
   const getInsight = async () => {
     setError("");
     setAiResult("");
@@ -79,6 +113,7 @@ export default function SymptomsPage() {
 
       setAiResult(data.insight);
 
+      // Save day's log
       await saveLog(data.insight);
     } catch (err) {
       setError("Something went wrong.");
@@ -91,10 +126,9 @@ export default function SymptomsPage() {
   return (
     <div className="symptoms-container">
       <div className="symptoms-card">
-
         <h1 className="symptoms-title">Daily Symptoms & Mood</h1>
 
-        {/* Mood */}
+        {/* Mood Section */}
         <h3 className="section-title">Mood</h3>
         <div className="mood-container">
           {moods.map((m) => (
@@ -108,7 +142,7 @@ export default function SymptomsPage() {
           ))}
         </div>
 
-        {/* Symptoms */}
+        {/* Symptoms Section */}
         <h3 className="section-title">Symptoms</h3>
         <div className="symptoms-grid">
           {symptomsList.map((s) => (
@@ -124,30 +158,41 @@ export default function SymptomsPage() {
           ))}
         </div>
 
+        {/* Buttons */}
         <div className="symptoms-actions">
-          <button className="primary-btn" onClick={getInsight} disabled={loadingAI}>
+          <button
+            className="primary-btn"
+            onClick={getInsight}
+            disabled={loadingAI}
+          >
             {loadingAI ? "Getting Insight..." : "Get Insight / Log Day"}
           </button>
 
-          <button className="secondary-btn" onClick={() => router.push("/log-period")}>
+          <button
+            className="secondary-btn"
+            onClick={() => router.push("/log-period")}
+          >
             Back to Start Date
           </button>
 
-          <button className="lastday-btn" onClick={() => router.push("/summary")}>
+          <button
+            className="lastday-btn"
+            onClick={() => router.push("/summary")}
+          >
             This is Last Day
           </button>
         </div>
 
+        {/* Errors */}
         {error && <p style={{ color: "red", marginTop: 10 }}>{error}</p>}
 
-        {/* BEAUTIFUL INSIGHT UI */}
+        {/* AI Result */}
         {aiResult && (
           <div className="ai-result">
             <h2>✨ Insight</h2>
             <pre style={{ whiteSpace: "pre-wrap" }}>{aiResult}</pre>
           </div>
         )}
-
       </div>
     </div>
   );
