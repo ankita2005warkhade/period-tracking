@@ -5,10 +5,16 @@ import { auth, db } from "@/lib/firebase";
 import { doc, setDoc, serverTimestamp, collection, addDoc } from "firebase/firestore";
 import { useRouter } from "next/navigation";
 
+import dynamic from "next/dynamic";
 import Navbar from "../navbar/page";
-import Calendar from "react-calendar";
+// import Calendar from "react-calendar";
 import "react-calendar/dist/Calendar.css";
 import Image from "next/image";
+
+// ⛔ fix hydration error – disable server rendering
+const Calendar = dynamic(() => import("react-calendar"), {
+  ssr: false,
+});
 
 export default function LogPeriodPage() {
   const [periodDate, setPeriodDate] = useState("");

@@ -20,6 +20,8 @@ export default function SummaryPage() {
   const [cycleLength, setCycleLength] = useState(0);
 
   const [healthScore, setHealthScore] = useState(0);
+  const [overallHealth, setOverallHealth] = useState(null); // ⭐ NEW BAR
+
   const [nextPeriodDate, setNextPeriodDate] = useState("");
 
   const [moodCount, setMoodCount] = useState({});
@@ -35,21 +37,30 @@ export default function SummaryPage() {
 
       // 1️⃣ Get active cycle ID
       const latestRef = doc(db, "users", user.uid, "appState", "latestState");
-
       const latestSnap = await getDoc(latestRef);
 
-      if (!latestSnap.exists()) {
-        setLoading(false);
-        return;
-      }
+      if (!latestSnap.exists()) return setLoading(false);
 
       const { activeCycleId } = latestSnap.data();
-      if (!activeCycleId) {
-        setLoading(false);
-        return;
-      }
+      if (!activeCycleId) return setLoading(false);
 
-      // 2️⃣ Fetch logs from cycles/{cycleId}/dailyLogs
+      // ⭐ NEW — Fetch all cycles for overall health score
+      const allCyclesRef = collection(db, "users", user.uid, "cycles");
+      const allCyclesSnap = await getDocs(allCyclesRef);
+
+      let allScores = [];
+      allCyclesSnap.forEach((c) => {
+        const data = c.data();
+        if (data.cycleHealthScore) {
+          allScores.push(data.cycleHealthScore);
+        }
+      });
+
+      // Remove current cycle score later
+      // (We'll push the current cycle score after calculating it)
+      // --------------------------
+
+      // 2️⃣ Fetch daily logs of the active cycle
       const logsRef = collection(
         db,
         "users",
@@ -62,12 +73,12 @@ export default function SummaryPage() {
       const q = query(logsRef, orderBy("date", "asc"));
       const snapshot = await getDocs(q);
 
-      const allLogs = snapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
+      const allLogs = snapshot.docs.map((d) => ({
+        id: d.id,
+        ...d.data(),
+      }));
 
-      if (allLogs.length === 0) {
-        setLoading(false);
-        return;
-      }
+      if (allLogs.length === 0) return setLoading(false);
 
       // 3️⃣ Sort logs by date
       const sortedLogs = allLogs.sort(
@@ -84,10 +95,9 @@ export default function SummaryPage() {
       const diffDays =
         (lastDay.getTime() - firstDay.getTime()) / (1000 * 60 * 60 * 24) + 1;
       const roundedDays = Math.round(diffDays);
-
       setCycleLength(roundedDays);
 
-      // 5️⃣ Mood & symptom counts
+      // 5️⃣ Mood & symptoms
       let moodMap = {};
       let symptomMap = {};
 
@@ -105,7 +115,7 @@ export default function SummaryPage() {
       setMoodCount(moodMap);
       setSymptomCount(symptomMap);
 
-      // 6️⃣ Health Score
+      // 6️⃣ Calculate cycle health score
       let score = 100;
       if (roundedDays < 3 || roundedDays > 8) score -= 25;
       if (Object.keys(symptomMap).length > 4) score -= 15;
@@ -113,12 +123,27 @@ export default function SummaryPage() {
 
       setHealthScore(score);
 
-      // 7️⃣ Next Period Prediction
+      // ⭐ Add current cycle score to allScores
+      allScores.push(score);
+
+      // ⭐ Calculate average overall health
+      if (allScores.length > 1) {
+        // remove last (current cycle) → we want past cycles only
+        const previousScores = allScores.slice(0, -1);
+        const avg =
+          previousScores.reduce((a, b) => a + b, 0) / previousScores.length;
+        setOverallHealth(Math.round(avg));
+      } else {
+        // no past cycles
+        setOverallHealth(null);
+      }
+
+      // 7️⃣ Next Predicted Period
       const next = new Date(firstDay);
       next.setDate(firstDay.getDate() + 28);
       setNextPeriodDate(next.toDateString());
 
-      // 8️⃣ Summary Generation
+      // 8️⃣ Summary Text
       const topMood =
         Object.keys(moodMap).sort((a, b) => moodMap[b] - moodMap[a])[0] || "";
       const topSymptom =
@@ -152,7 +177,7 @@ This summary is based entirely on your daily logs for this cycle.
 
       setSummaryText(summary);
 
-      // 9️⃣ Save summary to cycle doc
+      // 9️⃣ Save cycle summary to Firestore
       const cycleDocRef = doc(
         db,
         "users",
@@ -195,6 +220,7 @@ This summary is based entirely on your daily logs for this cycle.
     <div className="summary-page">
       <h1 className="summary-title">🌸 Monthly Cycle Summary</h1>
 
+      {/* Overview */}
       <div className="summary-card">
         <h2>Cycle Overview</h2>
         <p>Start Date: {startDate}</p>
@@ -202,6 +228,7 @@ This summary is based entirely on your daily logs for this cycle.
         <p>Total Days: {cycleLength}</p>
       </div>
 
+      {/* Current Cycle Health */}
       <div className="summary-card">
         <h2>Cycle Health</h2>
         <div className="progress-container">
@@ -213,11 +240,27 @@ This summary is based entirely on your daily logs for this cycle.
         <p className="progress-text">{healthScore}% Healthy</p>
       </div>
 
+      {/* ⭐ NEW — Overall Cycle Quality Bar */}
+      {overallHealth !== null && (
+        <div className="summary-card">
+          <h2>Overall Cycle Quality</h2>
+          <div className="progress-container">
+            <div
+              className="progress-bar"
+              style={{ width: `${overallHealth}%` }}
+            ></div>
+          </div>
+          <p className="progress-text">{overallHealth}% Overall Health</p>
+        </div>
+      )}
+
+      {/* Next Period */}
       <div className="summary-card">
         <h2>Next Expected Period</h2>
         <p>{nextPeriodDate}</p>
       </div>
 
+      {/* Mood Pattern */}
       <div className="summary-card">
         <h2>Mood Pattern</h2>
         {Object.keys(moodCount).map((mood) => (
@@ -234,6 +277,7 @@ This summary is based entirely on your daily logs for this cycle.
         ))}
       </div>
 
+      {/* Symptom Pattern */}
       <div className="summary-card">
         <h2>Symptom Pattern</h2>
         {Object.keys(symptomCount).map((s) => (
@@ -250,6 +294,7 @@ This summary is based entirely on your daily logs for this cycle.
         ))}
       </div>
 
+      {/* Summary Text */}
       <div className="summary-card">
         <h2>Cycle Summary</h2>
         <p style={{ whiteSpace: "pre-line" }}>{summaryText}</p>
