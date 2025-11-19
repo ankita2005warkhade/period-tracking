@@ -2,11 +2,18 @@
 
 import Link from "next/link";
 import { auth } from "@/lib/firebase";
-import { signOut } from "firebase/auth";
+import { signOut, onAuthStateChanged } from "firebase/auth";
 import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
 
 export default function Navbar() {
   const router = useRouter();
+  const [user, setUser] = useState(null);
+
+  useEffect(() => {
+    const unsub = onAuthStateChanged(auth, (u) => setUser(u));
+    return () => unsub();
+  }, []);
 
   const handleLogout = async () => {
     await signOut(auth);
@@ -14,14 +21,30 @@ export default function Navbar() {
   };
 
   return (
-    <nav className="w-full bg-white shadow-md py-4 px-6 flex items-center justify-between fixed top-0 left-0 z-10">
-      <h1 className="text-xl font-bold text-pink-600">Period Tracker</h1>
+    <nav className="navbar">
+      <div className="nav-container">
 
-      <div className="flex gap-6 text-sm font-medium">
-       
-        <button onClick={handleLogout} className="text-red-500">
-          Logout
-        </button>
+        {/* LEFT SIDE */}
+        <div className="nav-left">
+          <h1 className="nav-logo">Period Tracker</h1>
+        </div>
+
+        {/* RIGHT SIDE */}
+        <div className="nav-right">
+          <Link href="/about" className="nav-link">About</Link>
+
+          {user ? (
+            <button onClick={handleLogout} className="nav-btn logout-btn">
+              Logout
+            </button>
+          ) : (
+            <>
+              <Link href="/login" className="nav-btn login-btn">Login</Link>
+              <Link href="/signup" className="nav-btn signup-btn">Signup</Link>
+            </>
+          )}
+        </div>
+
       </div>
     </nav>
   );

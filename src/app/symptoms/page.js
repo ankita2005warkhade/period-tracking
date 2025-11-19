@@ -1,15 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { auth, db } from "@/lib/firebase";
-import {
-  doc,
-  setDoc,
-  collection,
-  query,
-  getDocs,
-  orderBy,
-} from "firebase/firestore";
+import { doc, setDoc, getDoc } from "firebase/firestore";
 import { useRouter } from "next/navigation";
 
 export default function SymptomsPage() {
@@ -29,65 +22,70 @@ export default function SymptomsPage() {
 
   const [selectedMood, setSelectedMood] = useState("");
   const [selectedSymptoms, setSelectedSymptoms] = useState([]);
-  const [loadingAI, setLoadingAI] = useState(false);
+
   const [aiResult, setAiResult] = useState(null);
+  const [loadingAI, setLoadingAI] = useState(false);
   const [error, setError] = useState("");
 
-  const toggleSymptom = (symptom) => {
+  const [activeCycleId, setActiveCycleId] = useState(null);
+  const [lastLoggedDate, setLastLoggedDate] = useState(null);
+  const [cycleStartDate, setCycleStartDate] = useState(null);
+  const [dayNumber, setDayNumber] = useState(null);
+
+  // ⭐ Fetch cycle state
+  useEffect(() => {
+    const fetchCycleState = async () => {
+      const user = auth.currentUser;
+      if (!user) return;
+
+      const latestRef = doc(db, "users", user.uid, "appState", "latestState");
+      const snap = await getDoc(latestRef);
+
+      if (!snap.exists()) {
+        setError("No active cycle found.");
+        return;
+      }
+
+      const data = snap.data();
+      setActiveCycleId(data.activeCycleId);
+      setLastLoggedDate(data.lastLoggedDate);
+
+      // cycle start date
+      if (data.activeCycleId) {
+        const cycleRef = doc(
+          db,
+          "users",
+          user.uid,
+          "cycles",
+          data.activeCycleId
+        );
+        const cycleSnap = await getDoc(cycleRef);
+
+        if (cycleSnap.exists()) {
+          const start = new Date(cycleSnap.data().startDate);
+          const last = new Date(data.lastLoggedDate);
+
+          const diff = (last - start) / (1000 * 3600 * 24) + 1;
+          setDayNumber(Math.round(diff));
+        }
+      }
+    };
+
+    fetchCycleState();
+  }, []);
+
+  const toggleSymptom = (s) => {
     setSelectedSymptoms((prev) =>
-      prev.includes(symptom)
-        ? prev.filter((s) => s !== symptom)
-        : [...prev, symptom]
+      prev.includes(s) ? prev.filter((x) => x !== s) : [...prev, s]
     );
   };
 
-  // ⭐ Automatically simulate next-day date for testing
-  const saveLog = async (insight) => {
-    const user = auth.currentUser;
-    if (!user) return;
-
-    // Fetch the latest log to know the last stored date
-    const logsRef = collection(db, "users", user.uid, "dailyLogs");
-    const q = query(logsRef, orderBy("date", "desc"));
-    const snapshot = await getDocs(q);
-
-    let nextDate = new Date();
-
-    // If previous logs exist → take last date and add 1 day
-    if (!snapshot.empty) {
-      const lastLog = snapshot.docs[0].data();
-      if (lastLog.date) {
-        const lastDate = new Date(lastLog.date);
-
-        nextDate = new Date(lastDate);
-        nextDate.setDate(lastDate.getDate() + 1); // ⭐ NEXT DAY SIMULATION
-      }
-    }
-
-    // Create ID in YYYY-MM-DD format
-    const dateId = nextDate.toISOString().split("T")[0];
-
-    // Save this day's log
-    await setDoc(doc(db, "users", user.uid, "dailyLogs", dateId), {
-      date: dateId,
-      mood: selectedMood,
-      symptoms: selectedSymptoms,
-      insight: insight,
-      createdAt: nextDate,
-    });
-
-    // Reset for next day
-    setSelectedMood("");
-    setSelectedSymptoms([]);
-  };
-
-  // ⭐ Get AI Insight + Save Log
   const getInsight = async () => {
     setError("");
     setAiResult("");
 
     if (!selectedMood && selectedSymptoms.length === 0) {
-      setError("Please select a mood or symptoms.");
+      setError("Select at least one mood or symptom.");
       return;
     }
 
@@ -106,17 +104,14 @@ export default function SymptomsPage() {
       const data = await res.json();
 
       if (!res.ok || !data.ok) {
-        setError("AI service error.");
+        setError("AI error.");
         setLoadingAI(false);
         return;
       }
 
       setAiResult(data.insight);
 
-      // Save day's log
-      await saveLog(data.insight);
     } catch (err) {
-      setError("Something went wrong.");
       console.error(err);
     }
 
@@ -126,9 +121,14 @@ export default function SymptomsPage() {
   return (
     <div className="symptoms-container">
       <div className="symptoms-card">
+
         <h1 className="symptoms-title">Daily Symptoms & Mood</h1>
 
-        {/* Mood Section */}
+        {dayNumber && (
+          <p className="day-counter"><strong>Day {dayNumber} of your cycle</strong></p>
+        )}
+
+        {/* Mood */}
         <h3 className="section-title">Mood</h3>
         <div className="mood-container">
           {moods.map((m) => (
@@ -142,7 +142,7 @@ export default function SymptomsPage() {
           ))}
         </div>
 
-        {/* Symptoms Section */}
+        {/* Symptoms */}
         <h3 className="section-title">Symptoms</h3>
         <div className="symptoms-grid">
           {symptomsList.map((s) => (
@@ -160,19 +160,17 @@ export default function SymptomsPage() {
 
         {/* Buttons */}
         <div className="symptoms-actions">
-          <button
-            className="primary-btn"
-            onClick={getInsight}
-            disabled={loadingAI}
-          >
-            {loadingAI ? "Getting Insight..." : "Get Insight / Log Day"}
+          <button className="primary-btn" onClick={getInsight}>
+            {loadingAI ? "Getting Insight..." : "Get Insight"}
           </button>
 
           <button
             className="secondary-btn"
-            onClick={() => router.push("/log-period")}
+            onClick={() =>
+              router.push("/self-care")
+            }
           >
-            Back to Start Date
+            Next → Self-Care
           </button>
 
           <button
@@ -183,16 +181,15 @@ export default function SymptomsPage() {
           </button>
         </div>
 
-        {/* Errors */}
-        {error && <p style={{ color: "red", marginTop: 10 }}>{error}</p>}
+        {error && <p style={{ color: "red" }}>{error}</p>}
 
-        {/* AI Result */}
         {aiResult && (
           <div className="ai-result">
             <h2>✨ Insight</h2>
             <pre style={{ whiteSpace: "pre-wrap" }}>{aiResult}</pre>
           </div>
         )}
+
       </div>
     </div>
   );

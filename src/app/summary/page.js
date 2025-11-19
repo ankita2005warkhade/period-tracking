@@ -2,7 +2,15 @@
 
 import { useEffect, useState } from "react";
 import { auth, db } from "@/lib/firebase";
-import { collection, getDocs, query, orderBy } from "firebase/firestore";
+import {
+  collection,
+  getDocs,
+  doc,
+  getDoc,
+  query,
+  orderBy,
+  setDoc,
+} from "firebase/firestore";
 
 export default function SummaryPage() {
   const [cycleLogs, setCycleLogs] = useState([]);
@@ -25,64 +33,68 @@ export default function SummaryPage() {
       const user = auth.currentUser;
       if (!user) return;
 
-      const logsRef = collection(db, "users", user.uid, "dailyLogs");
+      // 1️⃣ Get active cycle ID
+      const latestRef = doc(db, "users", user.uid, "appState", "latestState");
+
+      const latestSnap = await getDoc(latestRef);
+
+      if (!latestSnap.exists()) {
+        setLoading(false);
+        return;
+      }
+
+      const { activeCycleId } = latestSnap.data();
+      if (!activeCycleId) {
+        setLoading(false);
+        return;
+      }
+
+      // 2️⃣ Fetch logs from cycles/{cycleId}/dailyLogs
+      const logsRef = collection(
+        db,
+        "users",
+        user.uid,
+        "cycles",
+        activeCycleId,
+        "dailyLogs"
+      );
+
       const q = query(logsRef, orderBy("date", "asc"));
       const snapshot = await getDocs(q);
 
-      const allLogs = snapshot.docs.map((d) => ({
-        id: d.id,
-        ...d.data(),
-      }));
+      const allLogs = snapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
 
       if (allLogs.length === 0) {
         setLoading(false);
         return;
       }
 
-      // -----------------------------------
-      // 🟣 STEP 1 — SORT LOGS BY DATE
-      // -----------------------------------
+      // 3️⃣ Sort logs by date
       const sortedLogs = allLogs.sort(
         (a, b) => new Date(a.date) - new Date(b.date)
       );
 
-      // -----------------------------------
-      // 🟣 STEP 2 — IDENTIFY CURRENT CYCLE
-      // -----------------------------------
       const firstDay = new Date(sortedLogs[0].date);
       const lastDay = new Date(sortedLogs[sortedLogs.length - 1].date);
-
-      const currentCycle = sortedLogs.filter((log) => {
-        const logDate = new Date(log.date);
-        return logDate >= firstDay && logDate <= lastDay;
-      });
-
-      setCycleLogs(currentCycle);
-
-      // -----------------------------------
-      // 🟣 STEP 3 — CYCLE LENGTH (ROUND DAYS)
-      // -----------------------------------
-      const diffDays =
-        (lastDay.getTime() - firstDay.getTime()) / (1000 * 60 * 60 * 24) + 1;
-
-      const roundedDays = Math.round(diffDays);
-
-      setCycleLength(roundedDays);
 
       setStartDate(firstDay.toDateString());
       setEndDate(lastDay.toDateString());
 
-      // -----------------------------------
-      // 🟣 STEP 4 — PATTERN CALCULATIONS
-      // -----------------------------------
+      // 4️⃣ Cycle length
+      const diffDays =
+        (lastDay.getTime() - firstDay.getTime()) / (1000 * 60 * 60 * 24) + 1;
+      const roundedDays = Math.round(diffDays);
+
+      setCycleLength(roundedDays);
+
+      // 5️⃣ Mood & symptom counts
       let moodMap = {};
       let symptomMap = {};
 
-      currentCycle.forEach((log) => {
+      sortedLogs.forEach((log) => {
         if (log.mood) {
           moodMap[log.mood] = (moodMap[log.mood] || 0) + 1;
         }
-
         if (log.symptoms) {
           log.symptoms.forEach((s) => {
             symptomMap[s] = (symptomMap[s] || 0) + 1;
@@ -93,34 +105,22 @@ export default function SummaryPage() {
       setMoodCount(moodMap);
       setSymptomCount(symptomMap);
 
-      // -----------------------------------
-      // 🟣 STEP 5 — HEALTH SCORE
-      // -----------------------------------
+      // 6️⃣ Health Score
       let score = 100;
-
-      // Cycle < 3 or > 8 days → irregular
       if (roundedDays < 3 || roundedDays > 8) score -= 25;
-
-      // Too many symptoms types → lower score
       if (Object.keys(symptomMap).length > 4) score -= 15;
-
       if (score < 10) score = 10;
 
       setHealthScore(score);
 
-      // -----------------------------------
-      // 🟣 STEP 6 — NEXT PERIOD PREDICTION
-      // -----------------------------------
+      // 7️⃣ Next Period Prediction
       const next = new Date(firstDay);
       next.setDate(firstDay.getDate() + 28);
       setNextPeriodDate(next.toDateString());
 
-      // -----------------------------------
-      // 🟣 STEP 7 — SUMMARY TEXT
-      // -----------------------------------
+      // 8️⃣ Summary Generation
       const topMood =
         Object.keys(moodMap).sort((a, b) => moodMap[b] - moodMap[a])[0] || "";
-
       const topSymptom =
         Object.keys(symptomMap).sort(
           (a, b) => symptomMap[b] - symptomMap[a]
@@ -135,23 +135,54 @@ Your cycle lasted ${roundedDays} days,
 which is ${
         roundedDays < 3 || roundedDays > 8
           ? "slightly irregular"
-          : "within a normal and healthy range"
+          : "within a normal range"
       }.
 
-Your symptoms indicate normal hormonal changes,
-with patterns like ${topSymptom.toLowerCase()} appearing frequently,
+Your symptoms indicate normal hormonal variations,
 while your emotional balance fluctuated through phases of ${topMood.toLowerCase()}.
 
-💡 To support a healthier next cycle:
-• Stay consistent with hydration  
-• Practice gentle stretching or yoga  
-• Maintain good sleep routines  
-• Journal or practice breathing exercises for emotional balance  
+💡 To improve your next cycle:
+• Maintain hydration  
+• Use light stretching or yoga  
+• Prioritize sleep  
+• Journal or try calming breathing routines  
 
-This summary is fully based on your daily logs for this cycle.
-      `;
+This summary is based entirely on your daily logs for this cycle.
+`;
 
       setSummaryText(summary);
+
+      // 9️⃣ Save summary to cycle doc
+      const cycleDocRef = doc(
+        db,
+        "users",
+        user.uid,
+        "cycles",
+        activeCycleId
+      );
+
+      await setDoc(
+        cycleDocRef,
+        {
+          endDate: sortedLogs[sortedLogs.length - 1].date,
+          cycleLength: roundedDays,
+          nextPredictedDate: next.toDateString(),
+          cycleHealthScore: score,
+          summaryText: summary,
+        },
+        { merge: true }
+      );
+
+      // 🔟 Mark cycle complete
+      await setDoc(
+        latestRef,
+        {
+          isCycleRunning: false,
+          activeCycleId: null,
+        },
+        { merge: true }
+      );
+
       setLoading(false);
     };
 
@@ -164,7 +195,6 @@ This summary is fully based on your daily logs for this cycle.
     <div className="summary-page">
       <h1 className="summary-title">🌸 Monthly Cycle Summary</h1>
 
-      {/* Cycle Overview */}
       <div className="summary-card">
         <h2>Cycle Overview</h2>
         <p>Start Date: {startDate}</p>
@@ -172,7 +202,6 @@ This summary is fully based on your daily logs for this cycle.
         <p>Total Days: {cycleLength}</p>
       </div>
 
-      {/* Cycle Health */}
       <div className="summary-card">
         <h2>Cycle Health</h2>
         <div className="progress-container">
@@ -184,17 +213,13 @@ This summary is fully based on your daily logs for this cycle.
         <p className="progress-text">{healthScore}% Healthy</p>
       </div>
 
-      {/* Next Period */}
       <div className="summary-card">
         <h2>Next Expected Period</h2>
         <p>{nextPeriodDate}</p>
       </div>
 
-      {/* Mood Pattern */}
       <div className="summary-card">
-        <h2>Mood Pattern (This Cycle)</h2>
-        {Object.keys(moodCount).length === 0 && <p>No data logged.</p>}
-
+        <h2>Mood Pattern</h2>
         {Object.keys(moodCount).map((mood) => (
           <div className="bar-row" key={mood}>
             <span>{mood}</span>
@@ -209,12 +234,8 @@ This summary is fully based on your daily logs for this cycle.
         ))}
       </div>
 
-      {/* Symptom Pattern */}
       <div className="summary-card">
-        <h2>Symptom Pattern (This Cycle)</h2>
-
-        {Object.keys(symptomCount).length === 0 && <p>No data logged.</p>}
-
+        <h2>Symptom Pattern</h2>
         {Object.keys(symptomCount).map((s) => (
           <div className="bar-row" key={s}>
             <span>{s}</span>
@@ -229,7 +250,6 @@ This summary is fully based on your daily logs for this cycle.
         ))}
       </div>
 
-      {/* Summary */}
       <div className="summary-card">
         <h2>Cycle Summary</h2>
         <p style={{ whiteSpace: "pre-line" }}>{summaryText}</p>

@@ -511,3 +511,276 @@ button:hover {
 .summary-card p {
   line-height: 1.6;
 }
+/* NAVBAR CONTAINER */
+.navbar {
+  width: 100%;
+  background: white;
+  padding: 14px 20px;
+  box-shadow: 0 2px 6px rgba(255, 80, 140, 0.15);
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 50;
+
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+/* LEFT SIDE */
+.nav-left .nav-logo {
+  font-size: 22px;
+  font-weight: bold;
+  color: #ff4fa3;
+}
+
+/* RIGHT SIDE */
+.nav-right {
+  display: flex;
+  gap: 20px;
+  align-items: center;
+}
+
+/* Links */
+.nav-link {
+  text-decoration: none;
+  font-size: 14px;
+  color: #444;
+  font-weight: 500;
+}
+
+.nav-link:hover {
+  color: #ff4fa3;
+}
+
+/* Buttons */
+.nav-btn {
+  border: none;
+  padding: 6px 14px;
+  font-size: 14px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 500;
+}
+
+.login-btn {
+  background-color: #ff4fa3;
+  color: white;
+}
+
+.signup-btn {
+  background-color: #ff4fa3;
+  color: white;
+}
+
+.logout-btn {
+  background-color: #ff4f60;
+  color: white;
+}
+
+.nav-btn:hover {
+  opacity: 0.85;
+}
+/* ============================================
+   SYMPTOMS PAGE — CLEAN & OPTIMIZED
+============================================ */
+
+.symptoms-container {
+  min-height: 100vh;
+  background: #ffe6ef;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  padding: 30px 20px;
+}
+
+.symptoms-card {
+  width: 100%;
+  max-width: 520px;
+  background: white;
+  padding: 28px;
+  border-radius: 14px;
+  box-shadow: 0 3px 10px rgba(0,0,0,0.1);
+}
+
+/* Title */
+.symptoms-title {
+  text-align: center;
+  font-size: 24px;
+  font-weight: bold;
+  color: #d63384;
+  margin-bottom: 20px;
+}
+
+/* Section headers */
+.section-title {
+  font-size: 17px;
+  font-weight: 600;
+  color: #d63384;
+  margin: 18px 0 10px;
+}
+
+/* Mood Buttons */
+.mood-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.mood-btn {
+  padding: 10px 16px;
+  background: #f3f3f3;
+  border: 1px solid #ccc;
+  border-radius: 20px;
+  cursor: pointer;
+  transition: 0.2s;
+}
+
+.mood-selected {
+  background: #d63384 !important;
+  color: white;
+  border-color: #a31f5e;
+}
+
+/* Symptoms Grid */
+.symptoms-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+}
+
+.symptom-btn {
+  background: #f3f3f3;
+  padding: 12px;
+  border-radius: 10px;
+  border: 1px solid #ccc;
+  cursor: pointer;
+  transition: 0.2s;
+}
+
+.symptom-selected {
+  background: #d63384 !important;
+  color: white;
+  border-color: #a31f5e;
+}
+
+/* Day Counter */
+.day-counter {
+  text-align: center;
+  margin-top: -10px;
+  margin-bottom: 15px;
+  font-size: 16px;
+  color: #d63384;
+  font-weight: 500;
+}
+
+/* ============================
+   WATER TRACKER
+=============================== */
+.water-counter {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 12px;
+  margin: 8px 0 18px;
+}
+
+.water-btn {
+  padding: 8px 15px;
+  font-size: 20px;
+  background: #ff7aa2;
+  border: none;
+  border-radius: 10px;
+  color: white;
+  cursor: pointer;
+}
+
+.water-number {
+  font-size: 18px;
+  font-weight: bold;
+  color: #d63384;
+}
+
+/* ============================
+   SELF-CARE GRID
+=============================== */
+.selfcare-grid {
+  display: grid;
+  grid-template-columns: repeat(2,1fr);
+  gap: 12px;
+}
+
+.selfcare-btn {
+  background: #ffe4ef;
+  padding: 10px;
+  border: 1px solid #ffb6d6;
+  border-radius: 10px;
+  cursor: pointer;
+}
+
+.selfcare-selected {
+  background: #ff7aa2 !important;
+  color: white !important;
+  border-color: #e54b83;
+}
+
+/* ============================
+   NOTE INPUT
+=============================== */
+.note-input {
+  width: 100%;
+  min-height: 90px;
+  padding: 12px;
+  border-radius: 10px;
+  background: white;
+  border: 1px solid #ffb6d2;
+  resize: none;
+  outline: none;
+  font-size: 14px;
+}
+
+/* ============================
+   ACTION BUTTONS
+=============================== */
+.symptoms-actions {
+  margin-top: 25px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.primary-btn {
+  background: #d63384;
+  padding: 12px;
+  border-radius: 10px;
+  color: white;
+  border: none;
+  cursor: pointer;
+}
+
+.lastday-btn {
+  padding: 12px;
+  background: #ff4d4d;
+  border: none;
+  color: white;
+  border-radius: 10px;
+  cursor: pointer;
+}
+
+/* ============================
+   AI INSIGHT BOX
+=============================== */
+.ai-result {
+  background: #fff7fc;
+  border: 1px solid #ffd6ea;
+  padding: 18px;
+  margin-top: 20px;
+  border-radius: 12px;
+  box-shadow: 0px 4px 12px rgba(255,120,180,0.18);
+}
+
+.ai-result h2 {
+  font-size: 22px;
+  color: #ff4da6;
+  margin-bottom: 12px;
+}

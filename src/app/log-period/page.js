@@ -2,14 +2,14 @@
 
 import { useState } from "react";
 import { auth, db } from "@/lib/firebase";
-import { doc, setDoc, serverTimestamp } from "firebase/firestore";
+import { doc, setDoc, serverTimestamp, collection, addDoc } from "firebase/firestore";
 import { useRouter } from "next/navigation";
 
 export default function LogPeriodPage() {
   const [periodDate, setPeriodDate] = useState("");
   const router = useRouter();
 
-  const handleSave = async () => {
+  const handleStartCycle = async () => {
     const user = auth.currentUser;
 
     if (!user) {
@@ -18,29 +18,54 @@ export default function LogPeriodPage() {
     }
 
     if (!periodDate) {
-      alert("Please select a date!");
+      alert("Please select a start date!");
       return;
     }
 
     try {
-      const id = new Date().getTime().toString();
+      // Create a new cycle under /users/uid/cycles
+      const cycleRef = collection(db, "users", user.uid, "cycles");
 
-      await setDoc(doc(db, "users", user.uid, "periods", id), {
+      const newCycle = {
         startDate: periodDate,
+        endDate: null,
+        cycleLength: null,
+        gapFromPreviousCycle: null,
+        nextPredictedDate: null,
+        cycleHealthScore: null,
+        summaryText: "",
         createdAt: serverTimestamp(),
-      });
+      };
 
-      alert("Date saved successfully!");
+      // Create cycleId automatically
+      const cycleDoc = await addDoc(cycleRef, newCycle);
+      const cycleId = cycleDoc.id;
+
+      // Update latestState to track the active cycle
+      await setDoc(
+        doc(db, "users", user.uid, "appState", "latestState"),
+
+        {
+          activeCycleId: cycleId,
+          lastLoggedDate: periodDate,
+          isCycleRunning: true,
+        },
+        { merge: true }
+      );
+
+      alert("Cycle started successfully!");
       router.push("/symptoms");
-    } catch (err) {
-      console.error("Error saving date:", err);
+
+    } catch (error) {
+      console.error("❌ Error starting cycle:", error);
+      alert("Something went wrong.");
     }
   };
 
   return (
     <div className="logperiod-container">
       <div className="logperiod-card">
-        <h1 className="logperiod-title">Log Your Period Start Date</h1>
+        <h1 className="logperiod-title">Start Your Period Cycle</h1>
 
         <input
           type="date"
@@ -49,8 +74,8 @@ export default function LogPeriodPage() {
           className="logperiod-date-input"
         />
 
-        <button className="logperiod-btn" onClick={handleSave}>
-          Save Date
+        <button className="logperiod-btn" onClick={handleStartCycle}>
+          Start Cycle
         </button>
       </div>
     </div>
