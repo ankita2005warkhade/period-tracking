@@ -2,7 +2,15 @@
 
 import { useState, useEffect } from "react";
 import { auth, db } from "@/lib/firebase";
-import { doc, setDoc, getDoc } from "firebase/firestore";
+import {
+  doc,
+  setDoc,
+  getDoc,
+  collection,
+  query,
+  getDocs,
+  orderBy,
+} from "firebase/firestore";
 import { useRouter } from "next/navigation";
 
 export default function SymptomsPage() {
@@ -20,8 +28,20 @@ export default function SymptomsPage() {
     "Insomnia",
   ];
 
+  // ⭐ New State
+  const selfCareOptions = [
+    "Yoga",
+    "Meditation",
+    "Warm Bath",
+    "Healthy Meal",
+    "Rest",
+  ];
+
   const [selectedMood, setSelectedMood] = useState("");
   const [selectedSymptoms, setSelectedSymptoms] = useState([]);
+  const [waterIntake, setWaterIntake] = useState(0);
+  const [selectedSelfCare, setSelectedSelfCare] = useState([]);
+  const [note, setNote] = useState("");
 
   const [aiResult, setAiResult] = useState(null);
   const [loadingAI, setLoadingAI] = useState(false);
@@ -32,25 +52,25 @@ export default function SymptomsPage() {
   const [cycleStartDate, setCycleStartDate] = useState(null);
   const [dayNumber, setDayNumber] = useState(null);
 
-  // ⭐ Fetch cycle state
+  // ⭐ Fetch Cycle State
   useEffect(() => {
     const fetchCycleState = async () => {
       const user = auth.currentUser;
       if (!user) return;
 
       const latestRef = doc(db, "users", user.uid, "appState", "latestState");
-      const snap = await getDoc(latestRef);
+      const latestSnap = await getDoc(latestRef);
 
-      if (!snap.exists()) {
-        setError("No active cycle found.");
+      if (!latestSnap.exists()) {
+        setError("No active cycle found. Please start a cycle first.");
         return;
       }
 
-      const data = snap.data();
+      const data = latestSnap.data();
       setActiveCycleId(data.activeCycleId);
       setLastLoggedDate(data.lastLoggedDate);
 
-      // cycle start date
+      // Fetch cycle details
       if (data.activeCycleId) {
         const cycleRef = doc(
           db,
@@ -62,11 +82,16 @@ export default function SymptomsPage() {
         const cycleSnap = await getDoc(cycleRef);
 
         if (cycleSnap.exists()) {
-          const start = new Date(cycleSnap.data().startDate);
+          const cycleData = cycleSnap.data();
+          setCycleStartDate(cycleData.startDate);
+
+          const start = new Date(cycleData.startDate);
           const last = new Date(data.lastLoggedDate);
 
-          const diff = (last - start) / (1000 * 3600 * 24) + 1;
-          setDayNumber(Math.round(diff));
+          const diffDays =
+            (last.getTime() - start.getTime()) / (1000 * 3600 * 24) + 1;
+
+          setDayNumber(Math.round(diffDays));
         }
       }
     };
@@ -74,18 +99,89 @@ export default function SymptomsPage() {
     fetchCycleState();
   }, []);
 
-  const toggleSymptom = (s) => {
+  // ⭐ Toggle Symptoms
+  const toggleSymptom = (symptom) => {
     setSelectedSymptoms((prev) =>
-      prev.includes(s) ? prev.filter((x) => x !== s) : [...prev, s]
+      prev.includes(symptom)
+        ? prev.filter((s) => s !== symptom)
+        : [...prev, symptom]
     );
   };
 
+  // ⭐ Toggle Self-Care
+  const toggleSelfCare = (item) => {
+    setSelectedSelfCare((prev) =>
+      prev.includes(item)
+        ? prev.filter((x) => x !== item)
+        : [...prev, item]
+    );
+  };
+
+  // ⭐ Save Daily Log
+  const saveLog = async (insight) => {
+    const user = auth.currentUser;
+    if (!user || !activeCycleId) return;
+
+    let nextDate;
+
+    if (lastLoggedDate) {
+      const last = new Date(lastLoggedDate);
+      nextDate = new Date(last);
+      nextDate.setDate(last.getDate() + 1);
+    } else {
+      nextDate = new Date();
+    }
+
+    const dateId = nextDate.toISOString().split("T")[0];
+
+    const logRef = doc(
+      db,
+      "users",
+      user.uid,
+      "cycles",
+      activeCycleId,
+      "dailyLogs",
+      dateId
+    );
+
+    await setDoc(logRef, {
+      date: dateId,
+      mood: selectedMood,
+      symptoms: selectedSymptoms,
+      waterIntake: waterIntake,
+      selfCare: selectedSelfCare,
+      note: note,
+      insight: insight,
+      createdAt: nextDate,
+    });
+
+    // Update last logged date
+    const latestRef = doc(db, "users", user.uid, "appState", "latestState");
+    await setDoc(latestRef, { lastLoggedDate: dateId }, { merge: true });
+
+    // Reset UI
+    setSelectedMood("");
+    setSelectedSymptoms([]);
+    setWaterIntake(0);
+    setSelectedSelfCare([]);
+    setNote("");
+
+    setLastLoggedDate(dateId);
+    setDayNumber((prev) => prev + 1);
+  };
+
+  // ⭐ AI Insight + Logging
   const getInsight = async () => {
     setError("");
     setAiResult("");
 
     if (!selectedMood && selectedSymptoms.length === 0) {
-      setError("Select at least one mood or symptom.");
+      setError("Please select a mood or symptoms.");
+      return;
+    }
+
+    if (!activeCycleId) {
+      setError("No active cycle started.");
       return;
     }
 
@@ -104,15 +200,16 @@ export default function SymptomsPage() {
       const data = await res.json();
 
       if (!res.ok || !data.ok) {
-        setError("AI error.");
+        setError("AI service error.");
         setLoadingAI(false);
         return;
       }
 
       setAiResult(data.insight);
-
+      await saveLog(data.insight);
     } catch (err) {
       console.error(err);
+      setError("Something went wrong.");
     }
 
     setLoadingAI(false);
@@ -121,14 +218,16 @@ export default function SymptomsPage() {
   return (
     <div className="symptoms-container">
       <div className="symptoms-card">
-
         <h1 className="symptoms-title">Daily Symptoms & Mood</h1>
 
+        {/* ⭐ Day Counter */}
         {dayNumber && (
-          <p className="day-counter"><strong>Day {dayNumber} of your cycle</strong></p>
+          <p className="day-counter">
+            <strong>Day {dayNumber} of your cycle</strong>
+          </p>
         )}
 
-        {/* Mood */}
+        {/* ⭐ Mood */}
         <h3 className="section-title">Mood</h3>
         <div className="mood-container">
           {moods.map((m) => (
@@ -142,7 +241,7 @@ export default function SymptomsPage() {
           ))}
         </div>
 
-        {/* Symptoms */}
+        {/* ⭐ Symptoms */}
         <h3 className="section-title">Symptoms</h3>
         <div className="symptoms-grid">
           {symptomsList.map((s) => (
@@ -158,19 +257,12 @@ export default function SymptomsPage() {
           ))}
         </div>
 
+        
+       
         {/* Buttons */}
         <div className="symptoms-actions">
           <button className="primary-btn" onClick={getInsight}>
-            {loadingAI ? "Getting Insight..." : "Get Insight"}
-          </button>
-
-          <button
-            className="secondary-btn"
-            onClick={() =>
-              router.push("/self-care")
-            }
-          >
-            Next → Self-Care
+            {loadingAI ? "Getting Insight..." : "Get Insight / Log Day"}
           </button>
 
           <button
@@ -189,7 +281,6 @@ export default function SymptomsPage() {
             <pre style={{ whiteSpace: "pre-wrap" }}>{aiResult}</pre>
           </div>
         )}
-
       </div>
     </div>
   );
