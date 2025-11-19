@@ -784,3 +784,85 @@ button:hover {
   color: #ff4da6;
   margin-bottom: 12px;
 }
+/* Main wrapper: left text + right image/button */
+.home-main-wrapper {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 90%;
+  max-width: 1200px;
+  margin: auto;
+  padding: 40px 0;
+  gap: 40px;
+}
+
+/* LEFT SIDE */
+.home-left {
+  flex: 1;
+}
+
+.hero-title {
+  font-size: 3rem;
+  font-weight: 700;
+  color: #c2187a;
+}
+
+.hero-subtitle {
+  margin-top: 15px;
+  font-size: 1.2rem;
+  line-height: 1.6;
+  max-width: 450px;
+  color: #5a0747;
+}
+
+/* RIGHT SIDE */
+.home-right {
+  flex: 1;
+  text-align: center;
+}
+
+/* Image */
+.hero-image-container {
+  display: flex;
+  justify-content: center;
+}
+
+.hero-image {
+  width: 100%;
+  max-width: 400px;
+  border-radius: 12px;
+}
+
+/* Button card */
+.home-log-btn {
+  margin: 30px auto 0;
+  padding: 18px;
+  width: 260px;
+  background: #ff5fa2;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: 0.3s ease;
+  text-align: center;
+}
+
+.home-log-btn:hover {
+  background: #ff2d89;
+  transform: scale(1.05);
+}
+
+.dashboard-card-title {
+  color: white;
+  font-weight: 600;
+}
+
+/* Make responsive */
+@media (max-width: 900px) {
+  .home-main-wrapper {
+    flex-direction: column;
+    text-align: center;
+  }
+
+  .hero-title {
+    font-size: 2.2rem;
+  }
+}
