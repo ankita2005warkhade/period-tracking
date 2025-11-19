@@ -18,14 +18,14 @@ export default function SymptomsPage() {
 
   const moods = ["Happy", "Sad", "Moody", "Tired", "Angry", "Energetic"];
   const symptomsList = [
-    "Cramps",
+    "Cramps/Stomach Pain",
     "Headache",
-    "Bloating",
+    "Acidic Feeling",
     "Back Pain",
-    "Acne",
-    "Fatigue",
-    "Nausea",
-    "Insomnia",
+    "Acne/Pimples",
+    "Weakness",
+    "Feeling Like Vomiting",
+    "Can’t Sleep",
   ];
 
   // ⭐ New State
@@ -51,6 +51,13 @@ export default function SymptomsPage() {
   const [lastLoggedDate, setLastLoggedDate] = useState(null);
   const [cycleStartDate, setCycleStartDate] = useState(null);
   const [dayNumber, setDayNumber] = useState(null);
+
+  // 👉 Custom Mood/Symptoms
+  const [showCustomMoodInput, setShowCustomMoodInput] = useState(false);
+  const [customMood, setCustomMood] = useState("");
+
+  const [showCustomSymptomInput, setShowCustomSymptomInput] = useState(false);
+  const [customSymptom, setCustomSymptom] = useState("");
 
   // ⭐ Fetch Cycle State
   useEffect(() => {
@@ -234,12 +241,41 @@ export default function SymptomsPage() {
             <button
               key={m}
               className={`mood-btn ${selectedMood === m ? "mood-selected" : ""}`}
-              onClick={() => setSelectedMood(m)}
+              onClick={() => {
+                setSelectedMood(m);
+                setShowCustomMoodInput(false);
+              }}
             >
               {m}
             </button>
           ))}
+
+          {/* ⭐ OTHER MOOD BUTTON */}
+          <button
+            className={`mood-btn ${showCustomMoodInput ? "mood-selected" : ""}`}
+            onClick={() => {
+              setShowCustomMoodInput(true);
+              setSelectedMood("");
+            }}
+          >
+            Other
+          </button>
         </div>
+
+        {/* Custom Mood Input */}
+        {showCustomMoodInput && (
+          <input
+            type="text"
+            className="note-input"
+            placeholder="Type your mood..."
+            value={customMood}
+            onChange={(e) => {
+              setCustomMood(e.target.value);
+              setSelectedMood(e.target.value);
+            }}
+            style={{ marginTop: "10px" }}
+          />
+        )}
 
         {/* ⭐ Symptoms */}
         <h3 className="section-title">Symptoms</h3>
@@ -250,15 +286,46 @@ export default function SymptomsPage() {
               className={`symptom-btn ${
                 selectedSymptoms.includes(s) ? "symptom-selected" : ""
               }`}
-              onClick={() => toggleSymptom(s)}
+              onClick={() => {
+                toggleSymptom(s);
+                setShowCustomSymptomInput(false);
+              }}
             >
               {s}
             </button>
           ))}
+
+          {/* ⭐ OTHER SYMPTOM BUTTON */}
+          <button
+            className={`symptom-btn ${
+              showCustomSymptomInput ? "symptom-selected" : ""
+            }`}
+            onClick={() => setShowCustomSymptomInput(true)}
+          >
+            Other
+          </button>
         </div>
 
-        
-       
+        {/* Custom Symptom Input */}
+        {showCustomSymptomInput && (
+          <input
+            type="text"
+            className="note-input"
+            placeholder="Type your symptom..."
+            value={customSymptom}
+            onChange={(e) => setCustomSymptom(e.target.value)}
+            onBlur={() => {
+              if (customSymptom.trim()) {
+                setSelectedSymptoms((prev) => [
+                  ...prev,
+                  customSymptom.trim(),
+                ]);
+              }
+            }}
+            style={{ marginTop: "10px" }}
+          />
+        )}
+
         {/* Buttons */}
         <div className="symptoms-actions">
           <button className="primary-btn" onClick={getInsight}>
