@@ -852,7 +852,7 @@ button:hover {
 
 .dashboard-card-title {
   color: white;
-  font-weight: 600;
+  font-weight: 6Page00;
 }
 
 /* Make responsive */
@@ -865,4 +865,112 @@ button:hover {
   .hero-title {
     font-size: 2.2rem;
   }
+}
+/* Soft Pink Background */
+.enhanced-bg {
+  background: #ffe7f0;
+  min-height: 100vh;
+}
+
+/* Add space below navbar */
+.welcome-box {
+  margin-top: 50px;
+  text-align: center;
+}
+
+/* Sticker Image */
+.welcome-sticker {
+  animation: float 3s ease-in-out infinite;
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-6px); }
+}
+
+.welcome-text {
+  font-size: 26px;
+  margin-top: 10px;
+  color: #d63384;
+  font-weight: 700;
+}
+
+.welcome-sub {
+  color: #666;
+  font-size: 16px;
+  margin-top: 4px;
+}
+
+/* Increase gap between navbar and card */
+.logperiod-wrapper {
+  display: flex;
+  justify-content: center;
+  margin-top: 30px;
+  padding-bottom: 40px;
+}
+
+/* Card */
+.pretty-card {
+  position: relative;
+  background: #fff;
+  padding: 45px;
+  border-radius: 25px;
+  width: 480px;
+  text-align: center;
+  box-shadow: 0px 12px 40px rgba(0,0,0,0.1);
+}
+
+/* Title */
+.logperiod-title {
+  color: #d63384;
+  font-size: 30px;
+  font-weight: 700;
+}
+
+.logperiod-subtitle {
+  color: #777;
+  margin-bottom: 20px;
+  font-size: 15px;
+}
+
+/* Button */
+.logperiod-btn {
+  margin-top: 25px;
+  width: 100%;
+  padding: 15px;
+  font-size: 18px;
+  background: linear-gradient(90deg, #f4418f, #d63384);
+  color: white;
+  border: none;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: 0.3s;
+  font-weight: 600;
+}
+
+.logperiod-btn:hover {
+  transform: scale(1.03);
+}
+
+/* Calendar Styling */
+.styled-calendar {
+  width: 100% !important;
+  border: none !important;
+  background: transparent !important;
+}
+
+.react-calendar__tile--active {
+  background: #d63384 !important;
+  color: white !important;
+  border-radius: 10px;
+}
+
+/* Fade-in Animation */
+.fade-in {
+  animation: fadeIn 0.8s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
 }

@@ -5,25 +5,23 @@ import { auth, db } from "@/lib/firebase";
 import { doc, setDoc, serverTimestamp, collection, addDoc } from "firebase/firestore";
 import { useRouter } from "next/navigation";
 
+import Navbar from "../navbar/page";
+import Calendar from "react-calendar";
+import "react-calendar/dist/Calendar.css";
+import Image from "next/image";
+
 export default function LogPeriodPage() {
   const [periodDate, setPeriodDate] = useState("");
+  const [calendarDate, setCalendarDate] = useState(new Date());
   const router = useRouter();
 
   const handleStartCycle = async () => {
     const user = auth.currentUser;
 
-    if (!user) {
-      alert("Please login first.");
-      return;
-    }
-
-    if (!periodDate) {
-      alert("Please select a start date!");
-      return;
-    }
+    if (!user) return alert("Please login first.");
+    if (!periodDate) return alert("Please select a date!");
 
     try {
-      // Create a new cycle under /users/uid/cycles
       const cycleRef = collection(db, "users", user.uid, "cycles");
 
       const newCycle = {
@@ -37,46 +35,62 @@ export default function LogPeriodPage() {
         createdAt: serverTimestamp(),
       };
 
-      // Create cycleId automatically
       const cycleDoc = await addDoc(cycleRef, newCycle);
-      const cycleId = cycleDoc.id;
 
-      // Update latestState to track the active cycle
       await setDoc(
         doc(db, "users", user.uid, "appState", "latestState"),
-
         {
-          activeCycleId: cycleId,
+          activeCycleId: cycleDoc.id,
           lastLoggedDate: periodDate,
           isCycleRunning: true,
         },
         { merge: true }
       );
 
-      alert("Cycle started successfully!");
+      alert("Cycle started!");
       router.push("/symptoms");
-
     } catch (error) {
-      console.error("❌ Error starting cycle:", error);
+      console.error(error);
       alert("Something went wrong.");
     }
   };
 
   return (
-    <div className="logperiod-container">
-      <div className="logperiod-card">
-        <h1 className="logperiod-title">Start Your Period Cycle</h1>
+    <div className="logperiod-page enhanced-bg">
+      <Navbar />
 
-        <input
-          type="date"
-          value={periodDate}
-          onChange={(e) => setPeriodDate(e.target.value)}
-          className="logperiod-date-input"
+      {/* Welcome Section */}
+      <div className="welcome-box">
+        <Image
+          src="/cute-calendar.png" 
+          alt="Cute calendar girl"
+          width={120}
+          height={120}
+          className="welcome-sticker"
         />
+        <h2 className="welcome-text">Hey Beautiful! 💕</h2>
+        <p className="welcome-sub">Let’s begin tracking your cycle together.</p>
+      </div>
 
-        <button className="logperiod-btn" onClick={handleStartCycle}>
-          Start Cycle
-        </button>
+      {/* Calendar Card */}
+      <div className="logperiod-wrapper fade-in">
+        <div className="logperiod-card pretty-card">
+          <h1 className="logperiod-title">Start Your Cycle 💗</h1>
+          <p className="logperiod-subtitle">Pick your period’s Day 1</p>
+
+          <Calendar
+            onChange={(value) => {
+              setCalendarDate(value);
+              setPeriodDate(value.toISOString().split("T")[0]);
+            }}
+            value={calendarDate}
+            className="styled-calendar"
+          />
+
+          <button className="logperiod-btn" onClick={handleStartCycle}>
+            Start Cycle
+          </button>
+        </div>
       </div>
     </div>
   );
