@@ -3,10 +3,16 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 
 export async function POST(req) {
   try {
-    const { mood, symptoms } = await req.json();
+    const body = await req.json();
+
+    // Extract values safely
+    const mood = body.mood || "";
+    const symptoms = body.symptoms || [];
+    const flowLevel = body.flowLevel || ""; // ⭐ NEW
+
+    console.log("🔵 API RECEIVED:", { mood, symptoms, flowLevel });
 
     const apiKey = process.env.GEMINI_API_KEY;
-
     if (!apiKey) {
       return NextResponse.json(
         { ok: false, error: "Missing GEMINI_API_KEY" },
@@ -15,53 +21,55 @@ export async function POST(req) {
     }
 
     const genAI = new GoogleGenerativeAI(apiKey);
-
     const model = genAI.getGenerativeModel({
-      model: "gemini-2.0-flash", // Best, fast, free
+      model: "gemini-2.0-flash",
     });
 
-    // ⭐⭐ SUPER OPTIMIZED USER-CENTRIC PROMPT ⭐⭐
-   const prompt = `
+    // ⭐ Updated prompt including Flow Level
+    const prompt = `
 You are a women's health assistant.
 
-Generate a short, very simple daily insight based ONLY on the user's mood and symptoms.
-Write in very easy words that anyone can understand.
-Use only bullet points and short lines. Avoid long paragraphs.
+Generate a clear, simple daily insight using ONLY:
+Mood: ${mood}
+Symptoms: ${symptoms.join(", ")}
+Flow Level: ${flowLevel}
 
-➡️ Use EXACTLY this format:
+Write in very easy English. Keep everything SHORT and in bullet points.
+Do NOT write long paragraphs.
+
+Use EXACTLY this format:
 
 ✨ Insight
 
 🩷 Mood: ${mood}
 🌸 Symptoms: ${symptoms.join(", ")}
+❤️ Flow Level: ${flowLevel}
 
 🌼 What This Means  
-- Write 2 simple bullet points about why these symptoms and mood may happen.  
-- Use everyday language only.
+- 2 short bullet points  
+- Explain why these symptoms + flow happen  
+- Use everyday language  
 
 💡 What Can Help  
-- 4 practical home remedies (one short line each).  
-- Keep them simple and realistic.
+- 4 helpful home remedies (short)
 
 🧘 Self-care  
-- 3 short self-care tips.  
-- Very simple and comforting.
+- 3 gentle self-care tips  
 
 ⚠️ Warning  
-- If normal symptoms → "No serious warning today — just take care and rest well."  
-- If anything is concerning → 1 short warning line.
+- If symptoms are normal → “No serious warning today — just rest well.”  
 
 🌞 Reminder  
-- One short, kind reminder for the day.
-
-Generate the insight now.
+- One positive reminder  
 `;
 
-
     const result = await model.generateContent(prompt);
-    const text = result.response.text();
+    const insight = result.response.text().trim();
 
-    return NextResponse.json({ ok: true, insight: text });
+    return NextResponse.json({
+      ok: true,
+      insight,
+    });
   } catch (error) {
     console.error("❌ Gemini API Error:", error);
     return NextResponse.json(

@@ -28,7 +28,9 @@ export default function SymptomsPage() {
     "Can’t Sleep",
   ];
 
-  // ⭐ New State
+  // ⭐ NEW — Flow Level Options
+  const flowLevelOptions = ["Light", "Medium", "Heavy", "Spotting"];
+
   const selfCareOptions = [
     "Yoga",
     "Meditation",
@@ -39,6 +41,8 @@ export default function SymptomsPage() {
 
   const [selectedMood, setSelectedMood] = useState("");
   const [selectedSymptoms, setSelectedSymptoms] = useState([]);
+  const [selectedFlowLevel, setSelectedFlowLevel] = useState(""); // ⭐ NEW
+
   const [waterIntake, setWaterIntake] = useState(0);
   const [selectedSelfCare, setSelectedSelfCare] = useState([]);
   const [note, setNote] = useState("");
@@ -47,7 +51,6 @@ export default function SymptomsPage() {
   const [loadingAI, setLoadingAI] = useState(false);
   const [error, setError] = useState("");
   const [showPopup, setShowPopup] = useState(false);
-
 
   const [activeCycleId, setActiveCycleId] = useState(null);
   const [lastLoggedDate, setLastLoggedDate] = useState(null);
@@ -126,7 +129,7 @@ export default function SymptomsPage() {
     );
   };
 
-  // ⭐ Save Daily Log
+  // ⭐ Save Daily Log (UPDATED WITH FLOW LEVEL)
   const saveLog = async (insight) => {
     const user = auth.currentUser;
     if (!user || !activeCycleId) return;
@@ -157,6 +160,7 @@ export default function SymptomsPage() {
       date: dateId,
       mood: selectedMood,
       symptoms: selectedSymptoms,
+      flowLevel: selectedFlowLevel, // ⭐ NEW — save flow
       waterIntake: waterIntake,
       selfCare: selectedSelfCare,
       note: note,
@@ -171,6 +175,7 @@ export default function SymptomsPage() {
     // Reset UI
     setSelectedMood("");
     setSelectedSymptoms([]);
+    setSelectedFlowLevel(""); // ⭐ reset flow
     setWaterIntake(0);
     setSelectedSelfCare([]);
     setNote("");
@@ -183,10 +188,9 @@ export default function SymptomsPage() {
   const getInsight = async () => {
     setError("");
     setAiResult("");
-    
 
-    if (!selectedMood && selectedSymptoms.length === 0) {
-      setError("Please select a mood or symptoms.");
+    if (!selectedMood && selectedSymptoms.length === 0 && !selectedFlowLevel) {
+      setError("Please select mood, symptoms, or flow level.");
       return;
     }
 
@@ -204,6 +208,7 @@ export default function SymptomsPage() {
         body: JSON.stringify({
           mood: selectedMood,
           symptoms: selectedSymptoms,
+          flowLevel: selectedFlowLevel, // ⭐ add flow to AI
         }),
       });
 
@@ -216,7 +221,7 @@ export default function SymptomsPage() {
       }
 
       setAiResult(data.insight);
-      setShowPopup(true);   // 👈 This opens popup
+      setShowPopup(true);
 
       await saveLog(data.insight);
     } catch (err) {
@@ -230,9 +235,6 @@ export default function SymptomsPage() {
   return (
     <div className="symptoms-container">
       <div className="symptoms-card">
-        
- 
-
         <h1 className="symptoms-title">Daily Symptoms & Mood</h1>
 
         {/* ⭐ Day Counter */}
@@ -258,7 +260,6 @@ export default function SymptomsPage() {
             </button>
           ))}
 
-          {/* ⭐ OTHER MOOD BUTTON */}
           <button
             className={`mood-btn ${showCustomMoodInput ? "mood-selected" : ""}`}
             onClick={() => {
@@ -270,7 +271,6 @@ export default function SymptomsPage() {
           </button>
         </div>
 
-        {/* Custom Mood Input */}
         {showCustomMoodInput && (
           <input
             type="text"
@@ -303,7 +303,6 @@ export default function SymptomsPage() {
             </button>
           ))}
 
-          {/* ⭐ OTHER SYMPTOM BUTTON */}
           <button
             className={`symptom-btn ${
               showCustomSymptomInput ? "symptom-selected" : ""
@@ -314,7 +313,6 @@ export default function SymptomsPage() {
           </button>
         </div>
 
-        {/* Custom Symptom Input */}
         {showCustomSymptomInput && (
           <input
             type="text"
@@ -333,6 +331,24 @@ export default function SymptomsPage() {
             style={{ marginTop: "10px" }}
           />
         )}
+
+        {/* ⭐ NEW — Flow Level Section */}
+        <h3 className="section-title" style={{ marginTop: "20px" }}>
+          Flow Level
+        </h3>
+        <div className="mood-container">
+          {flowLevelOptions.map((f) => (
+            <button
+              key={f}
+              className={`mood-btn ${
+                selectedFlowLevel === f ? "mood-selected" : ""
+              }`}
+              onClick={() => setSelectedFlowLevel(f)}
+            >
+              {f}
+            </button>
+          ))}
+        </div>
 
         {/* Buttons */}
         <div className="symptoms-actions">
@@ -356,26 +372,24 @@ export default function SymptomsPage() {
             <pre style={{ whiteSpace: "pre-wrap" }}>{aiResult}</pre>
           </div>
         )}
+
         {showPopup && (
-  <div className="popup-overlay">
-    <div className="popup-card popup-animate">
-      <h2 className="popup-title">✨ Insight</h2>
+          <div className="popup-overlay">
+            <div className="popup-card popup-animate">
+              <h2 className="popup-title">✨ Insight</h2>
 
-      <div className="popup-content">
-        <pre className="popup-text">{aiResult}</pre>
-      </div>
+              <div className="popup-content">
+                <pre className="popup-text">{aiResult}</pre>
+              </div>
 
-      <button className="popup-close-btn" onClick={() => setShowPopup(false)}>
-        Close
-      </button>
-    </div>
-  </div>
-)}
-
-
+              <button className="popup-close-btn" onClick={() => setShowPopup(false)}>
+                Close
+              </button>
+            </div>
+          </div>
+        )}
 
       </div>
     </div>
   );
 }
-

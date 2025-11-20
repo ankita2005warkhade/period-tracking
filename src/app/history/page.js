@@ -3,17 +3,10 @@
 import { useEffect, useState, useMemo } from "react";
 import { auth, db } from "@/lib/firebase";
 import { onAuthStateChanged } from "firebase/auth";
-import {
-  collection,
-  getDocs,
-  query,
-  orderBy,
-} from "firebase/firestore";
+import { collection, getDocs, query, orderBy } from "firebase/firestore";
 import Link from "next/link";
 
-/* -------------------------------------------
-   SIMPLE SVG LINE CHART
-------------------------------------------- */
+/* LINE CHART */
 function LineChart({ data = [], labels = [], height = 120, color = "#ff4fa3" }) {
   if (!data.length)
     return (
@@ -36,7 +29,11 @@ function LineChart({ data = [], labels = [], height = 120, color = "#ff4fa3" }) 
   });
 
   return (
-    <svg width="100%" viewBox={`0 0 ${w} ${h}`} preserveAspectRatio="xMinYMid meet">
+    <svg
+      width="100%"
+      viewBox={`0 0 ${w} ${h}`}
+      preserveAspectRatio="xMinYMid meet"
+    >
       <defs>
         <linearGradient id="g" x1="0" x2="1">
           <stop offset="0%" stopColor={color} stopOpacity="0.2" />
@@ -45,7 +42,9 @@ function LineChart({ data = [], labels = [], height = 120, color = "#ff4fa3" }) 
       </defs>
 
       <polyline
-        points={`${points.join(" ")} ${w - padding},${h - padding} ${padding},${h - padding}`}
+        points={`${points.join(" ")} ${w - padding},${h - padding} ${
+          padding
+        },${h - padding}`}
         fill="url(#g)"
       />
 
@@ -59,22 +58,19 @@ function LineChart({ data = [], labels = [], height = 120, color = "#ff4fa3" }) 
 
       {points.map((pt, i) => {
         const [cx, cy] = pt.split(",").map(Number);
-        return <circle key={i} cx={cx} cy={cy} r={3.3} fill={color} />;
+        return <circle key={i} cx={cx} cy={cy} r={3.2} fill={color} />;
       })}
     </svg>
   );
 }
 
-/*===========================================
-   MAIN COMPONENT
-===========================================*/
-
+/* MAIN COMPONENT */
 export default function HistoryPage() {
   const [user, setUser] = useState(null);
   const [cycles, setCycles] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  /* WATCH AUTH */
+  /* AUTH WATCH */
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, (u) => setUser(u || null));
     return () => unsub();
@@ -107,10 +103,9 @@ export default function HistoryPage() {
 
       const completed = arr.filter((c) => c.endDate);
 
-      // oldest → newest (for graph)
-      completed.sort((a, b) => {
-        return (a.createdAt?.getTime() || 0) - (b.createdAt?.getTime() || 0);
-      });
+      completed.sort(
+        (a, b) => (a.createdAt?.getTime() || 0) - (b.createdAt?.getTime() || 0)
+      );
 
       setCycles(completed);
       setLoading(false);
@@ -119,15 +114,13 @@ export default function HistoryPage() {
     fetchCycles();
   }, [user]);
 
-  /* -------------------------------------------
-     COMPUTED STATISTICS
-  ------------------------------------------- */
+  /* COMPUTED STATS */
   const stats = useMemo(() => {
     if (!cycles.length) {
       return {
         avgLength: 0,
         avgHealth: 0,
-        nextPredictedDate: null,
+        nextPredictedDate: "—",
         lengths: [],
         healths: [],
         labels: [],
@@ -136,7 +129,6 @@ export default function HistoryPage() {
 
     const lengths = cycles.map((c) => c.cycleLength || 0);
     const healths = cycles.map((c) => c.cycleHealthScore || 0);
-
     const labels = cycles.map((c) =>
       new Date(c.startDate).toLocaleDateString("en-US", {
         month: "short",
@@ -152,33 +144,38 @@ export default function HistoryPage() {
       avgHealth: Math.round(
         healths.reduce((a, b) => a + b, 0) / healths.length
       ),
-      nextPredictedDate: cycles[cycles.length - 1]?.nextPredictedDate ?? "—",
+      nextPredictedDate:
+        cycles[cycles.length - 1]?.nextPredictedDate ?? "—",
       lengths,
       healths,
       labels,
     };
   }, [cycles]);
 
-  /* -------------------------------------------
-     DOWNLOAD PDF REPORT (ALL CYCLES)
-  ------------------------------------------- */
+  /* PDF DOWNLOAD */
   const downloadPDF = async () => {
-    if (!cycles.length) return;
+    if (!cycles.length) return alert("No cycles to export.");
 
     const payload = {
       appName: "Period Tracking",
-      brandColor: "#3b3b98", // professional deep purple-blue
-      accentColor: "#2a9d8f", // medical green
+      brandColor: "#3b3b98",
+      accentColor: "#2a9d8f",
+
       cycles: cycles.map((c) => ({
         startDate: c.startDate,
         endDate: c.endDate,
         cycleLength: c.cycleLength,
         cycleHealthScore: c.cycleHealthScore,
         nextPredictedDate: c.nextPredictedDate,
-        topMood: c.topMood || "",
-        topSymptom: c.topSymptom || "",
-        shortSummary: (c.summaryText || "").slice(0, 250),
-        specialNotes: c.specialNotes || "",
+
+        // ⭐ NEW IMPORTANT FIELDS
+        topMood: c.topMood || "Not logged",
+        topSymptom: c.topSymptom || "Not logged",
+        topFlow: c.topFlow || "Not logged",
+        flowSummary: c.flowSummary || "No flow data logged.",
+
+        summaryText: c.summaryText || "No summary available.",
+        redFlags: c.redFlags || [],
       })),
     };
 
@@ -188,10 +185,7 @@ export default function HistoryPage() {
       body: JSON.stringify(payload),
     });
 
-    if (!res.ok) {
-      alert("Failed to generate report");
-      return;
-    }
+    if (!res.ok) return alert("PDF generation failed.");
 
     const blob = await res.blob();
     const url = URL.createObjectURL(blob);
@@ -202,92 +196,57 @@ export default function HistoryPage() {
     URL.revokeObjectURL(url);
   };
 
-  /* -------------------------------------------
-     CSV (Your existing function)
-  ------------------------------------------- */
-  const downloadCSV = () => {
-    if (!cycles.length) return;
-
-    const header = [
-      "cycleId",
-      "startDate",
-      "endDate",
-      "cycleLength",
-      "cycleHealthScore",
-      "nextPredictedDate",
-      "summaryText",
-    ];
-    const rows = cycles.map((c) => [
-      c.id,
-      c.startDate,
-      c.endDate,
-      c.cycleLength,
-      c.cycleHealthScore,
-      c.nextPredictedDate,
-      (c.summaryText || "").replace(/\n/g, " "),
-    ]);
-
-    const csv =
-      [header, ...rows]
-        .map((r) => r.map((v) => `"${v}"`).join(","))
-        .join("\n");
-
-    const blob = new Blob([csv], { type: "text/csv" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = "cycles.csv";
-    a.click();
-    URL.revokeObjectURL(url);
-  };
-
-  /* -------------------------------------------
-     UI STARTS HERE
-  ------------------------------------------- */
-
   return (
     <div style={{ padding: 22, maxWidth: 1200, margin: "0 auto" }}>
-      <h1 style={{ fontSize: 32, marginBottom: 12 }}>📊 Cycle History Dashboard</h1>
+      <h1 style={{ fontSize: 32, marginBottom: 12 }}>
+        📊 Cycle History Dashboard
+      </h1>
 
       {loading && <p>Loading...</p>}
-      {!loading && !user && <p>Please login to view your history.</p>}
+      {!loading && !user && <p>You must be logged in.</p>}
 
-      {/* Empty message */}
       {!loading && user && cycles.length === 0 && (
         <div
-          style={{
-            background: "#fff4f7",
-            padding: 20,
-            borderRadius: 10,
-            marginTop: 20,
-          }}
+          style={{ padding: 18, background: "#fff4f7", borderRadius: 12 }}
         >
           <p>No completed cycles yet.</p>
           <Link href="/log-period">
-            <button style={{ padding: "8px 12px", background: "#ff4fa3", color: "white" }}>
-              Start a Cycle
+            <button
+              style={{
+                background: "#ff4fa3",
+                padding: "8px 12px",
+                color: "white",
+              }}
+            >
+              Log your first cycle
             </button>
           </Link>
         </div>
       )}
 
-      {/* If cycles exist */}
-      {user && cycles.length > 0 && (
+      {!loading && cycles.length > 0 && (
         <>
-          {/* TOP STATS */}
+          {/* TOP CARDS */}
           <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
-            <StatCard title="Avg Cycle Length" value={`${stats.avgLength} days`} />
-            <StatCard title="Avg Cycle Health" value={`${stats.avgHealth}%`} />
-            <StatCard title="Next Expected Period" value={stats.nextPredictedDate} />
+            <StatCard
+              title="Avg Cycle Length"
+              value={`${stats.avgLength} days`}
+            />
+            <StatCard
+              title="Avg Cycle Health"
+              value={`${stats.avgHealth}%`}
+            />
+            <StatCard
+              title="Next Expected Period"
+              value={stats.nextPredictedDate}
+            />
 
-            {/* PDF + CSV buttons */}
             <div
               style={{
-                flex: "1 1 180px",
+                flex: "1 1 200px",
                 background: "#fff",
                 padding: 16,
                 borderRadius: 12,
-                textAlign: "center",
               }}
             >
               <button
@@ -295,32 +254,26 @@ export default function HistoryPage() {
                 style={{
                   background: "#3b3b98",
                   color: "white",
-                  padding: "9px 14px",
+                  padding: "10px 14px",
                   borderRadius: 8,
-                  border: "none",
-                  marginBottom: 8,
-                }}
-              >
-                📄 Download PDF
-              </button>
-
-              <button
-                onClick={downloadCSV}
-                style={{
-                  background: "#ff4fa3",
-                  color: "white",
-                  padding: "9px 14px",
-                  borderRadius: 8,
+                  width: "100%",
                   border: "none",
                 }}
               >
-                ⬇️ CSV
+                📄 Download PDF Report
               </button>
             </div>
           </div>
 
           {/* GRAPHS */}
-          <div style={{ display: "flex", gap: 12, marginTop: 20, flexWrap: "wrap" }}>
+          <div
+            style={{
+              display: "flex",
+              gap: 12,
+              marginTop: 20,
+              flexWrap: "wrap",
+            }}
+          >
             <ChartCard title="Cycle Length Trend">
               <LineChart
                 data={stats.lengths}
@@ -341,7 +294,7 @@ export default function HistoryPage() {
           </div>
 
           {/* CYCLE LIST */}
-          <h2 style={{ marginTop: 28 }}>Completed Cycles</h2>
+          <h2 style={{ marginTop: 25 }}>Completed Cycles</h2>
           <div style={{ display: "grid", gap: 12 }}>
             {cycles.map((c) => (
               <CycleCard key={c.id} cycle={c} />
@@ -353,9 +306,7 @@ export default function HistoryPage() {
   );
 }
 
-/* -------------------------------------------
-   SMALL COMPONENTS
-------------------------------------------- */
+/* SMALL COMPONENTS */
 function StatCard({ title, value }) {
   return (
     <div
@@ -382,7 +333,13 @@ function ChartCard({ title, children }) {
         borderRadius: 12,
       }}
     >
-      <div style={{ color: "#c2187a", fontWeight: 700, marginBottom: 6 }}>
+      <div
+        style={{
+          color: "#c2187a",
+          fontWeight: 700,
+          marginBottom: 6,
+        }}
+      >
         {title}
       </div>
       {children}
@@ -401,17 +358,18 @@ function CycleCard({ cycle }) {
         justifyContent: "space-between",
       }}
     >
-      <div style={{ flex: 1, paddingRight: 12 }}>
+      <div style={{ flex: 1 }}>
         <div style={{ fontWeight: 700, color: "#d63384" }}>
           {new Date(cycle.startDate).toDateString()} →{" "}
           {new Date(cycle.endDate).toDateString()}
         </div>
 
         <div style={{ color: "#666", marginTop: 6 }}>
-          {cycle.cycleLength} days · Health: {cycle.cycleHealthScore}%
+          {cycle.cycleLength} days · Health Score:{" "}
+          {cycle.cycleHealthScore}%
         </div>
 
-        <p style={{ color: "#444", marginTop: 8 }}>
+        <p style={{ marginTop: 8, color: "#444" }}>
           {(cycle.summaryText || "").slice(0, 200)}
           {cycle.summaryText?.length > 200 ? "..." : ""}
         </p>
@@ -427,7 +385,7 @@ function CycleCard({ cycle }) {
           <button
             style={{
               marginTop: 10,
-              padding: "8px 10px",
+              padding: "8px 12px",
               borderRadius: 8,
               border: "none",
               background: "#ff7aa2",

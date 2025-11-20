@@ -20,12 +20,14 @@ export default function SummaryPage() {
   const [cycleLength, setCycleLength] = useState(0);
 
   const [healthScore, setHealthScore] = useState(0);
-  const [overallHealth, setOverallHealth] = useState(null); // ⭐ NEW BAR
+  const [overallHealth, setOverallHealth] = useState(null);
 
   const [nextPeriodDate, setNextPeriodDate] = useState("");
 
   const [moodCount, setMoodCount] = useState({});
   const [symptomCount, setSymptomCount] = useState({});
+  const [flowLevelCount, setFlowLevelCount] = useState({}); // ⭐ NEW
+
   const [summaryText, setSummaryText] = useState("");
 
   const [loading, setLoading] = useState(true);
@@ -35,7 +37,6 @@ export default function SummaryPage() {
       const user = auth.currentUser;
       if (!user) return;
 
-      // 1️⃣ Get active cycle ID
       const latestRef = doc(db, "users", user.uid, "appState", "latestState");
       const latestSnap = await getDoc(latestRef);
 
@@ -44,7 +45,19 @@ export default function SummaryPage() {
       const { activeCycleId } = latestSnap.data();
       if (!activeCycleId) return setLoading(false);
 
-      // ⭐ NEW — Fetch all cycles for overall health score
+      const cycleDocRef = doc(
+        db,
+        "users",
+        user.uid,
+        "cycles",
+        activeCycleId
+      );
+      const cycleSnap = await getDoc(cycleDocRef);
+      const cycleData = cycleSnap.data();
+
+      const realStartDate = new Date(cycleData.startDate);
+      setStartDate(realStartDate.toDateString());
+
       const allCyclesRef = collection(db, "users", user.uid, "cycles");
       const allCyclesSnap = await getDocs(allCyclesRef);
 
@@ -56,11 +69,6 @@ export default function SummaryPage() {
         }
       });
 
-      // Remove current cycle score later
-      // (We'll push the current cycle score after calculating it)
-      // --------------------------
-
-      // 2️⃣ Fetch daily logs of the active cycle
       const logsRef = collection(
         db,
         "users",
@@ -80,112 +88,123 @@ export default function SummaryPage() {
 
       if (allLogs.length === 0) return setLoading(false);
 
-      // 3️⃣ Sort logs by date
       const sortedLogs = allLogs.sort(
         (a, b) => new Date(a.date) - new Date(b.date)
       );
 
-      const firstDay = new Date(sortedLogs[0].date);
       const lastDay = new Date(sortedLogs[sortedLogs.length - 1].date);
-
-      setStartDate(firstDay.toDateString());
       setEndDate(lastDay.toDateString());
 
-      // 4️⃣ Cycle length
       const diffDays =
-        (lastDay.getTime() - firstDay.getTime()) / (1000 * 60 * 60 * 24) + 1;
+        (lastDay.getTime() - realStartDate.getTime()) /
+          (1000 * 60 * 60 * 24) +
+        1;
       const roundedDays = Math.round(diffDays);
       setCycleLength(roundedDays);
 
-      // 5️⃣ Mood & symptoms
       let moodMap = {};
       let symptomMap = {};
+      let flowMap = {}; // ⭐ NEW
 
       sortedLogs.forEach((log) => {
         if (log.mood) {
           moodMap[log.mood] = (moodMap[log.mood] || 0) + 1;
         }
+
         if (log.symptoms) {
           log.symptoms.forEach((s) => {
             symptomMap[s] = (symptomMap[s] || 0) + 1;
           });
         }
+
+        if (log.flowLevel) {
+          flowMap[log.flowLevel] = (flowMap[log.flowLevel] || 0) + 1;
+        }
       });
 
       setMoodCount(moodMap);
       setSymptomCount(symptomMap);
+      setFlowLevelCount(flowMap);
 
-      // 6️⃣ Calculate cycle health score
       let score = 100;
       if (roundedDays < 3 || roundedDays > 8) score -= 25;
       if (Object.keys(symptomMap).length > 4) score -= 15;
       if (score < 10) score = 10;
 
       setHealthScore(score);
-
-      // ⭐ Add current cycle score to allScores
       allScores.push(score);
 
-      // ⭐ Calculate average overall health
       if (allScores.length > 1) {
-        // remove last (current cycle) → we want past cycles only
-        const previousScores = allScores.slice(0, -1);
-        const avg =
-          previousScores.reduce((a, b) => a + b, 0) / previousScores.length;
+        const previous = allScores.slice(0, -1);
+        const avg = previous.reduce((a, b) => a + b, 0) / previous.length;
         setOverallHealth(Math.round(avg));
-      } else {
-        // no past cycles
-        setOverallHealth(null);
       }
 
-      // 7️⃣ Next Predicted Period
-      const next = new Date(firstDay);
-      next.setDate(firstDay.getDate() + 28);
+      const next = new Date(realStartDate);
+      next.setDate(realStartDate.getDate() + 28);
       setNextPeriodDate(next.toDateString());
 
-      // 8️⃣ Summary Text
+      // ⭐ NEW — COMPUTE TOP VALUES
       const topMood =
-        Object.keys(moodMap).sort((a, b) => moodMap[b] - moodMap[a])[0] || "";
+        Object.keys(moodMap).sort((a, b) => moodMap[b] - moodMap[a])[0] ||
+        "Not logged";
+
       const topSymptom =
         Object.keys(symptomMap).sort(
           (a, b) => symptomMap[b] - symptomMap[a]
-        )[0] || "";
+        )[0] || "Not logged";
 
+      const topFlow =
+        Object.keys(flowMap).sort((a, b) => flowMap[b] - flowMap[a])[0] ||
+        "Not logged";
+
+      // ⭐ NEW — FLOW SUMMARY
+      const flowSummary =
+        Object.keys(flowMap).length > 0
+          ? Object.keys(flowMap)
+              .map((f) => `${f}: ${flowMap[f]} days`)
+              .join(", ")
+          : "No flow data logged.";
+
+      // ⭐ NEW — RED FLAGS
+      let redFlags = [];
+
+      if (flowMap["Heavy"] >= 2)
+        redFlags.push("Heavy flow for 2 or more days");
+
+      if (roundedDays < 3 || roundedDays > 8)
+        redFlags.push("Irregular cycle length");
+
+      if (Object.keys(symptomMap).length === 0)
+        redFlags.push("No symptoms logged");
+
+      if (redFlags.length === 0)
+        redFlags.push("No serious warning signs detected.");
+
+      // ⭐ NEW — SUMMARY TEXT (Doctor Friendly)
       const summary = `
-During this cycle from ${firstDay.toDateString()} to ${lastDay.toDateString()},
-your body commonly experienced ${topSymptom.toLowerCase()},
-and emotionally, your most frequent mood was "${topMood}".
+During this cycle (${realStartDate.toDateString()} → ${lastDay.toDateString()}):
 
-Your cycle lasted ${roundedDays} days,
-which is ${
-        roundedDays < 3 || roundedDays > 8
-          ? "slightly irregular"
-          : "within a normal range"
-      }.
+• Most common flow: **${topFlow}**
+• Most frequent mood: **${topMood}**
+• Most reported symptom: **${topSymptom}**
+• Cycle length: **${roundedDays} days** (${
+        roundedDays < 3 || roundedDays > 8 ? "irregular" : "normal"
+      })
 
-Your symptoms indicate normal hormonal variations,
-while your emotional balance fluctuated through phases of ${topMood.toLowerCase()}.
+Flow Pattern:
+${flowSummary}
 
-💡 To improve your next cycle:
-• Maintain hydration  
-• Use light stretching or yoga  
-• Prioritize sleep  
-• Journal or try calming breathing routines  
-
-This summary is based entirely on your daily logs for this cycle.
-`;
+💡 Tips:
+• Stay hydrated  
+• Try light stretching  
+• Track heavy flow days  
+• Sleep early  
+      `.trim();
 
       setSummaryText(summary);
 
-      // 9️⃣ Save cycle summary to Firestore
-      const cycleDocRef = doc(
-        db,
-        "users",
-        user.uid,
-        "cycles",
-        activeCycleId
-      );
-
+      // ⭐ NEW — SAVE ALL FIELDS IN FIRESTORE
       await setDoc(
         cycleDocRef,
         {
@@ -193,12 +212,17 @@ This summary is based entirely on your daily logs for this cycle.
           cycleLength: roundedDays,
           nextPredictedDate: next.toDateString(),
           cycleHealthScore: score,
+
+          topMood,
+          topSymptom,
+          topFlow,
+          flowSummary,
           summaryText: summary,
+          redFlags,
         },
         { merge: true }
       );
 
-      // 🔟 Mark cycle complete
       await setDoc(
         latestRef,
         {
@@ -218,9 +242,9 @@ This summary is based entirely on your daily logs for this cycle.
 
   return (
     <div className="summary-page">
+
       <h1 className="summary-title">🌸 Monthly Cycle Summary</h1>
 
-      {/* Overview */}
       <div className="summary-card">
         <h2>Cycle Overview</h2>
         <p>Start Date: {startDate}</p>
@@ -228,7 +252,6 @@ This summary is based entirely on your daily logs for this cycle.
         <p>Total Days: {cycleLength}</p>
       </div>
 
-      {/* Current Cycle Health */}
       <div className="summary-card">
         <h2>Cycle Health</h2>
         <div className="progress-container">
@@ -240,7 +263,6 @@ This summary is based entirely on your daily logs for this cycle.
         <p className="progress-text">{healthScore}% Healthy</p>
       </div>
 
-      {/* ⭐ NEW — Overall Cycle Quality Bar */}
       {overallHealth !== null && (
         <div className="summary-card">
           <h2>Overall Cycle Quality</h2>
@@ -254,13 +276,11 @@ This summary is based entirely on your daily logs for this cycle.
         </div>
       )}
 
-      {/* Next Period */}
       <div className="summary-card">
         <h2>Next Expected Period</h2>
         <p>{nextPeriodDate}</p>
       </div>
 
-      {/* Mood Pattern */}
       <div className="summary-card">
         <h2>Mood Pattern</h2>
         {Object.keys(moodCount).map((mood) => (
@@ -277,7 +297,6 @@ This summary is based entirely on your daily logs for this cycle.
         ))}
       </div>
 
-      {/* Symptom Pattern */}
       <div className="summary-card">
         <h2>Symptom Pattern</h2>
         {Object.keys(symptomCount).map((s) => (
@@ -294,11 +313,30 @@ This summary is based entirely on your daily logs for this cycle.
         ))}
       </div>
 
-      {/* Summary Text */}
+      <div className="summary-card">
+        <h2>Flow Pattern</h2>
+        {Object.keys(flowLevelCount).length === 0 && (
+          <p>No flow data logged.</p>
+        )}
+        {Object.keys(flowLevelCount).map((f) => (
+          <div className="bar-row" key={f}>
+            <span>{f}</span>
+            <div className="bar-track">
+              <div
+                className="bar-fill"
+                style={{ width: `${flowLevelCount[f] * 20}px` }}
+              ></div>
+            </div>
+            <span>{flowLevelCount[f]} days</span>
+          </div>
+        ))}
+      </div>
+
       <div className="summary-card">
         <h2>Cycle Summary</h2>
         <p style={{ whiteSpace: "pre-line" }}>{summaryText}</p>
       </div>
+
     </div>
   );
 }
