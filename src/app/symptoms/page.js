@@ -46,6 +46,8 @@ export default function SymptomsPage() {
   const [aiResult, setAiResult] = useState(null);
   const [loadingAI, setLoadingAI] = useState(false);
   const [error, setError] = useState("");
+  const [showPopup, setShowPopup] = useState(false);
+
 
   const [activeCycleId, setActiveCycleId] = useState(null);
   const [lastLoggedDate, setLastLoggedDate] = useState(null);
@@ -181,6 +183,7 @@ export default function SymptomsPage() {
   const getInsight = async () => {
     setError("");
     setAiResult("");
+    
 
     if (!selectedMood && selectedSymptoms.length === 0) {
       setError("Please select a mood or symptoms.");
@@ -213,6 +216,8 @@ export default function SymptomsPage() {
       }
 
       setAiResult(data.insight);
+      setShowPopup(true);   // 👈 This opens popup
+
       await saveLog(data.insight);
     } catch (err) {
       console.error(err);
@@ -225,6 +230,9 @@ export default function SymptomsPage() {
   return (
     <div className="symptoms-container">
       <div className="symptoms-card">
+        
+ 
+
         <h1 className="symptoms-title">Daily Symptoms & Mood</h1>
 
         {/* ⭐ Day Counter */}
@@ -348,7 +356,26 @@ export default function SymptomsPage() {
             <pre style={{ whiteSpace: "pre-wrap" }}>{aiResult}</pre>
           </div>
         )}
+        {showPopup && (
+  <div className="popup-overlay">
+    <div className="popup-card popup-animate">
+      <h2 className="popup-title">✨ Insight</h2>
+
+      <div className="popup-content">
+        <pre className="popup-text">{aiResult}</pre>
+      </div>
+
+      <button className="popup-close-btn" onClick={() => setShowPopup(false)}>
+        Close
+      </button>
+    </div>
+  </div>
+)}
+
+
+
       </div>
     </div>
   );
 }
+
