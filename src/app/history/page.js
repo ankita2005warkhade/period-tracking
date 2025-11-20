@@ -8,17 +8,19 @@ import {
   getDocs,
   query,
   orderBy,
-  where,
 } from "firebase/firestore";
 import Link from "next/link";
 
-/**
- * Simple line chart using SVG.
- * props.data = array of numbers
- * props.labels = array of labels (same length)
- */
+/* -------------------------------------------
+   SIMPLE SVG LINE CHART
+------------------------------------------- */
 function LineChart({ data = [], labels = [], height = 120, color = "#ff4fa3" }) {
-  if (!data.length) return <div style={{ height, display: "flex", alignItems: "center" }}>No data</div>;
+  if (!data.length)
+    return (
+      <div style={{ height, display: "flex", alignItems: "center" }}>
+        No data
+      </div>
+    );
 
   const padding = 10;
   const w = Math.max(220, data.length * 40);
@@ -33,69 +35,52 @@ function LineChart({ data = [], labels = [], height = 120, color = "#ff4fa3" }) 
     return `${x},${y}`;
   });
 
-  // small ticks labels (first + last)
   return (
     <svg width="100%" viewBox={`0 0 ${w} ${h}`} preserveAspectRatio="xMinYMid meet">
-      {/* grid lines */}
       <defs>
         <linearGradient id="g" x1="0" x2="1">
-          <stop offset="0%" stopColor={color} stopOpacity="0.18" />
-          <stop offset="100%" stopColor={color} stopOpacity="0.06" />
+          <stop offset="0%" stopColor={color} stopOpacity="0.2" />
+          <stop offset="100%" stopColor={color} stopOpacity="0.05" />
         </linearGradient>
       </defs>
 
-      {/* area under line (smooth poly not used for simplicity) */}
       <polyline
         points={`${points.join(" ")} ${w - padding},${h - padding} ${padding},${h - padding}`}
         fill="url(#g)"
-        stroke="none"
       />
 
-      {/* line */}
       <polyline
         points={points.join(" ")}
         fill="none"
         stroke={color}
         strokeWidth="2.5"
         strokeLinecap="round"
-        strokeLinejoin="round"
       />
 
-      {/* dots */}
-      {points.map((pt, idx) => {
+      {points.map((pt, i) => {
         const [cx, cy] = pt.split(",").map(Number);
-        return <circle key={idx} cx={cx} cy={cy} r={3.5} fill={color} />;
+        return <circle key={i} cx={cx} cy={cy} r={3.3} fill={color} />;
       })}
-
-      {/* small labels - only first and last to keep it clean */}
-      {labels.length > 0 && (
-        <>
-          <text x={padding} y={h - 2} fontSize="8" fill="#666">
-            {labels[0]}
-          </text>
-          <text x={w - padding - 40} y={h - 2} fontSize="8" fill="#666">
-            {labels[labels.length - 1]}
-          </text>
-        </>
-      )}
     </svg>
   );
 }
 
+/*===========================================
+   MAIN COMPONENT
+===========================================*/
+
 export default function HistoryPage() {
   const [user, setUser] = useState(null);
-  const [loading, setLoading] = useState(true);
   const [cycles, setCycles] = useState([]);
-  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(true);
 
+  /* WATCH AUTH */
   useEffect(() => {
-    // wait for auth
-    const unsub = onAuthStateChanged(auth, (u) => {
-      setUser(u || null);
-    });
+    const unsub = onAuthStateChanged(auth, (u) => setUser(u || null));
     return () => unsub();
   }, []);
 
+  /* FETCH CYCLES */
   useEffect(() => {
     if (!user) {
       setCycles([]);
@@ -105,47 +90,38 @@ export default function HistoryPage() {
 
     const fetchCycles = async () => {
       setLoading(true);
-      setError("");
 
-      try {
-        // fetch cycles collection for current user and order by startDate desc
-        const cyclesRef = collection(db, "users", user.uid, "cycles");
-        const q = query(cyclesRef, orderBy("startDate", "desc"));
-        const snap = await getDocs(q);
+      const cyclesRef = collection(db, "users", user.uid, "cycles");
+      const q = query(cyclesRef, orderBy("startDate", "desc"));
+      const snap = await getDocs(q);
 
-        const arr = snap.docs.map((d) => {
-          const data = d.data();
-          // normalize createdAt and dates
-          const createdAt = data.createdAt && data.createdAt.toDate ? data.createdAt.toDate() : (data.createdAt?.seconds ? new Date(data.createdAt.seconds * 1000) : null);
-          return {
-            id: d.id,
-            ...data,
-            createdAt,
-          };
-        });
+      const arr = snap.docs.map((d) => ({
+        id: d.id,
+        ...d.data(),
+        createdAt:
+          d.data().createdAt?.toDate?.() ??
+          (d.data().createdAt?.seconds
+            ? new Date(d.data().createdAt.seconds * 1000)
+            : null),
+      }));
 
-        // filter completed cycles only (endDate must exist / non-empty)
-        const completed = arr.filter((c) => c.endDate && String(c.endDate).trim() !== "");
-        // sort by createdAt ascending for charts (older -> newer)
-        completed.sort((a, b) => {
-          const ta = a.createdAt ? a.createdAt.getTime() : 0;
-          const tb = b.createdAt ? b.createdAt.getTime() : 0;
-          return ta - tb;
-        });
+      const completed = arr.filter((c) => c.endDate);
 
-        setCycles(completed);
-      } catch (err) {
-        console.error("🔥 fetchCycles error:", err);
-        setError("Failed to fetch cycles.");
-      } finally {
-        setLoading(false);
-      }
+      // oldest → newest (for graph)
+      completed.sort((a, b) => {
+        return (a.createdAt?.getTime() || 0) - (b.createdAt?.getTime() || 0);
+      });
+
+      setCycles(completed);
+      setLoading(false);
     };
 
     fetchCycles();
   }, [user]);
 
-  // derived stats
+  /* -------------------------------------------
+     COMPUTED STATISTICS
+  ------------------------------------------- */
   const stats = useMemo(() => {
     if (!cycles.length) {
       return {
@@ -153,156 +129,315 @@ export default function HistoryPage() {
         avgHealth: 0,
         nextPredictedDate: null,
         lengths: [],
-        lengthLabels: [],
         healths: [],
-        healthLabels: [],
+        labels: [],
       };
     }
 
-    const lengths = cycles.map((c) => Number(c.cycleLength || 0));
-    const healths = cycles.map((c) => Number(c.cycleHealthScore || 0));
-    const labels = cycles.map((c) => {
-      try {
-        return new Date(c.startDate).toLocaleDateString(undefined, { month: "short", day: "numeric" });
-      } catch {
-        return c.startDate;
-      }
-    });
+    const lengths = cycles.map((c) => c.cycleLength || 0);
+    const healths = cycles.map((c) => c.cycleHealthScore || 0);
 
-    const avgLength = Math.round((lengths.reduce((s, v) => s + v, 0) / (lengths.length || 1)) * 10) / 10;
-    const avgHealth = Math.round((healths.reduce((s, v) => s + v, 0) / (healths.length || 1)));
-
-    // next predicted date from the most recent cycle (by createdAt)
-    const sortedByCreated = [...cycles].sort((a, b) => {
-      const ta = a.createdAt ? a.createdAt.getTime() : 0;
-      const tb = b.createdAt ? b.createdAt.getTime() : 0;
-      return tb - ta;
-    });
-    const nextPredictedDate = sortedByCreated[0]?.nextPredictedDate || null;
+    const labels = cycles.map((c) =>
+      new Date(c.startDate).toLocaleDateString("en-US", {
+        month: "short",
+        day: "numeric",
+      })
+    );
 
     return {
-      avgLength,
-      avgHealth,
-      nextPredictedDate,
+      avgLength:
+        Math.round(
+          (lengths.reduce((a, b) => a + b, 0) / lengths.length) * 10
+        ) / 10,
+      avgHealth: Math.round(
+        healths.reduce((a, b) => a + b, 0) / healths.length
+      ),
+      nextPredictedDate: cycles[cycles.length - 1]?.nextPredictedDate ?? "—",
       lengths,
-      lengthLabels: labels,
       healths,
-      healthLabels: labels,
+      labels,
     };
   }, [cycles]);
 
-  // CSV download
-  const downloadCSV = () => {
+  /* -------------------------------------------
+     DOWNLOAD PDF REPORT (ALL CYCLES)
+  ------------------------------------------- */
+  const downloadPDF = async () => {
     if (!cycles.length) return;
-    const header = ["cycleId", "startDate", "endDate", "cycleLength", "cycleHealthScore", "nextPredictedDate", "summaryText"];
-    const rows = cycles.map((c) => [
-      c.id,
-      c.startDate,
-      c.endDate,
-      c.cycleLength ?? "",
-      c.cycleHealthScore ?? "",
-      c.nextPredictedDate ?? "",
-      (c.summaryText || "").replace(/\r?\n/g, " "),
-    ]);
 
-    const csv = [header, ...rows].map((r) => r.map((v) => `"${String(v).replace(/"/g, '""')}"`).join(",")).join("\n");
-    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const payload = {
+      appName: "Period Tracking",
+      brandColor: "#3b3b98", // professional deep purple-blue
+      accentColor: "#2a9d8f", // medical green
+      cycles: cycles.map((c) => ({
+        startDate: c.startDate,
+        endDate: c.endDate,
+        cycleLength: c.cycleLength,
+        cycleHealthScore: c.cycleHealthScore,
+        nextPredictedDate: c.nextPredictedDate,
+        topMood: c.topMood || "",
+        topSymptom: c.topSymptom || "",
+        shortSummary: (c.summaryText || "").slice(0, 250),
+        specialNotes: c.specialNotes || "",
+      })),
+    };
+
+    const res = await fetch("/api/generateReport", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+
+    if (!res.ok) {
+      alert("Failed to generate report");
+      return;
+    }
+
+    const blob = await res.blob();
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = "cycles_history.csv";
+    a.download = "cycle_report.pdf";
     a.click();
     URL.revokeObjectURL(url);
   };
 
+  /* -------------------------------------------
+     CSV (Your existing function)
+  ------------------------------------------- */
+  const downloadCSV = () => {
+    if (!cycles.length) return;
+
+    const header = [
+      "cycleId",
+      "startDate",
+      "endDate",
+      "cycleLength",
+      "cycleHealthScore",
+      "nextPredictedDate",
+      "summaryText",
+    ];
+    const rows = cycles.map((c) => [
+      c.id,
+      c.startDate,
+      c.endDate,
+      c.cycleLength,
+      c.cycleHealthScore,
+      c.nextPredictedDate,
+      (c.summaryText || "").replace(/\n/g, " "),
+    ]);
+
+    const csv =
+      [header, ...rows]
+        .map((r) => r.map((v) => `"${v}"`).join(","))
+        .join("\n");
+
+    const blob = new Blob([csv], { type: "text/csv" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "cycles.csv";
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  /* -------------------------------------------
+     UI STARTS HERE
+  ------------------------------------------- */
+
   return (
     <div style={{ padding: 22, maxWidth: 1200, margin: "0 auto" }}>
-      <h1 style={{ fontSize: 28, marginBottom: 10 }}>📊 Cycle History Dashboard</h1>
-
-      {!user && <p style={{ color: "#666" }}>You must be logged in to see cycle history.</p>}
+      <h1 style={{ fontSize: 32, marginBottom: 12 }}>📊 Cycle History Dashboard</h1>
 
       {loading && <p>Loading...</p>}
-      {error && <p style={{ color: "red" }}>{error}</p>}
+      {!loading && !user && <p>Please login to view your history.</p>}
 
+      {/* Empty message */}
       {!loading && user && cycles.length === 0 && (
-        <div style={{ padding: 18, background: "#fff8f9", borderRadius: 8 }}>
-          <p style={{ margin: 0 }}>No completed cycles yet. Log a cycle to see history here.</p>
-          <Link href="/log-period"><button style={{ marginTop: 10, padding: "8px 12px", background: "#ff4fa3", color: "white", border: "none", borderRadius: 8 }}>Start a Cycle</button></Link>
+        <div
+          style={{
+            background: "#fff4f7",
+            padding: 20,
+            borderRadius: 10,
+            marginTop: 20,
+          }}
+        >
+          <p>No completed cycles yet.</p>
+          <Link href="/log-period">
+            <button style={{ padding: "8px 12px", background: "#ff4fa3", color: "white" }}>
+              Start a Cycle
+            </button>
+          </Link>
         </div>
       )}
 
-      {!loading && cycles.length > 0 && (
+      {/* If cycles exist */}
+      {user && cycles.length > 0 && (
         <>
-          {/* top stat cards */}
-          <div style={{ display: "flex", gap: 12, marginTop: 14, flexWrap: "wrap" }}>
-            <div style={{ flex: "1 1 220px", background: "#fff", padding: 16, borderRadius: 12, boxShadow: "0 6px 20px rgba(0,0,0,0.04)" }}>
-              <div style={{ color: "#ff4fa3", fontWeight: 700 }}>Avg cycle length</div>
-              <div style={{ fontSize: 28, marginTop: 8 }}>{stats.avgLength} days</div>
-              <div style={{ color: "#666", fontSize: 13, marginTop: 6 }}>Based on {cycles.length} completed cycles</div>
-            </div>
+          {/* TOP STATS */}
+          <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
+            <StatCard title="Avg Cycle Length" value={`${stats.avgLength} days`} />
+            <StatCard title="Avg Cycle Health" value={`${stats.avgHealth}%`} />
+            <StatCard title="Next Expected Period" value={stats.nextPredictedDate} />
 
-            <div style={{ flex: "1 1 220px", background: "#fff", padding: 16, borderRadius: 12, boxShadow: "0 6px 20px rgba(0,0,0,0.04)" }}>
-              <div style={{ color: "#ff4fa3", fontWeight: 700 }}>Avg cycle health</div>
-              <div style={{ fontSize: 28, marginTop: 8 }}>{stats.avgHealth}%</div>
-              <div style={{ color: "#666", fontSize: 13, marginTop: 6 }}>Higher is better — lower means irregular/many symptoms</div>
-            </div>
+            {/* PDF + CSV buttons */}
+            <div
+              style={{
+                flex: "1 1 180px",
+                background: "#fff",
+                padding: 16,
+                borderRadius: 12,
+                textAlign: "center",
+              }}
+            >
+              <button
+                onClick={downloadPDF}
+                style={{
+                  background: "#3b3b98",
+                  color: "white",
+                  padding: "9px 14px",
+                  borderRadius: 8,
+                  border: "none",
+                  marginBottom: 8,
+                }}
+              >
+                📄 Download PDF
+              </button>
 
-            <div style={{ flex: "1 1 220px", background: "#fff", padding: 16, borderRadius: 12, boxShadow: "0 6px 20px rgba(0,0,0,0.04)" }}>
-              <div style={{ color: "#ff4fa3", fontWeight: 700 }}>Next predicted period</div>
-              <div style={{ fontSize: 20, marginTop: 8 }}>{stats.nextPredictedDate || "—"}</div>
-              <div style={{ color: "#666", fontSize: 13, marginTop: 6 }}>From latest completed cycle</div>
-            </div>
-
-            <div style={{ flex: "0 0 160px", background: "#fff", padding: 12, borderRadius: 12, display: "flex", alignItems: "center", justifyContent: "center" }}>
-              <button onClick={downloadCSV} style={{ background: "#ff4fa3", color: "#fff", border: "none", padding: "10px 12px", borderRadius: 8, cursor: "pointer" }}>
-                Download CSV
+              <button
+                onClick={downloadCSV}
+                style={{
+                  background: "#ff4fa3",
+                  color: "white",
+                  padding: "9px 14px",
+                  borderRadius: 8,
+                  border: "none",
+                }}
+              >
+                ⬇️ CSV
               </button>
             </div>
           </div>
 
-          {/* charts */}
+          {/* GRAPHS */}
           <div style={{ display: "flex", gap: 12, marginTop: 20, flexWrap: "wrap" }}>
-            <div style={{ flex: "1 1 420px", background: "#fff", padding: 14, borderRadius: 12 }}>
-              <div style={{ color: "#d63384", fontWeight: 700, marginBottom: 8 }}>Cycle Length Trend</div>
-              <LineChart data={stats.lengths} labels={stats.lengthLabels} height={130} color="#ff7cc2" />
-            </div>
+            <ChartCard title="Cycle Length Trend">
+              <LineChart
+                data={stats.lengths}
+                labels={stats.labels}
+                height={140}
+                color="#ff7cc2"
+              />
+            </ChartCard>
 
-            <div style={{ flex: "1 1 420px", background: "#fff", padding: 14, borderRadius: 12 }}>
-              <div style={{ color: "#d63384", fontWeight: 700, marginBottom: 8 }}>Health Score Trend</div>
-              <LineChart data={stats.healths} labels={stats.healthLabels} height={130} color="#ff4fa3" />
-            </div>
+            <ChartCard title="Health Score Trend">
+              <LineChart
+                data={stats.healths}
+                labels={stats.labels}
+                height={140}
+                color="#ff4fa3"
+              />
+            </ChartCard>
           </div>
 
-          {/* cycles list */}
-          <div style={{ marginTop: 20 }}>
-            <h2 style={{ marginBottom: 10 }}>Completed cycles</h2>
-
-            <div style={{ display: "grid", gap: 12 }}>
-              {cycles.map((c) => (
-                <div key={c.id} style={{ background: "#fff", padding: 14, borderRadius: 12, display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12 }}>
-                  <div style={{ flex: 1 }}>
-                    <div style={{ fontWeight: 700, color: "#c2187a" }}>
-                      {new Date(c.startDate).toDateString?.() || c.startDate} → {new Date(c.endDate).toDateString?.() || c.endDate}
-                    </div>
-                    <div style={{ color: "#666", marginTop: 6, fontSize: 14 }}>
-                      {c.cycleLength ? `${c.cycleLength} days` : "Length: —"} · Health: {c.cycleHealthScore ?? "—"}%
-                    </div>
-                    {c.summaryText && <p style={{ marginTop: 8, whiteSpace: "pre-line", color: "#444" }}>{c.summaryText.slice(0, 220)}{c.summaryText.length > 220 ? "..." : ""}</p>}
-                  </div>
-
-                  <div style={{ minWidth: 160, textAlign: "right" }}>
-                    <div style={{ fontSize: 13, color: "#666" }}>Predicted next</div>
-                    <div style={{ marginTop: 6, fontWeight: 700 }}>{c.nextPredictedDate || "—"}</div>
-                    <div style={{ marginTop: 12 }}>
-                      <Link href={`/history/${c.id}`}><button style={{ padding: "8px 10px", borderRadius: 8, border: "none", background: "#ff7aa2", color: "#fff", cursor: "pointer" }}>View details</button></Link>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
+          {/* CYCLE LIST */}
+          <h2 style={{ marginTop: 28 }}>Completed Cycles</h2>
+          <div style={{ display: "grid", gap: 12 }}>
+            {cycles.map((c) => (
+              <CycleCard key={c.id} cycle={c} />
+            ))}
           </div>
         </>
       )}
+    </div>
+  );
+}
+
+/* -------------------------------------------
+   SMALL COMPONENTS
+------------------------------------------- */
+function StatCard({ title, value }) {
+  return (
+    <div
+      style={{
+        flex: "1 1 230px",
+        background: "#fff",
+        padding: 16,
+        borderRadius: 12,
+      }}
+    >
+      <div style={{ color: "#ff4fa3", fontWeight: 700 }}>{title}</div>
+      <div style={{ fontSize: 26, marginTop: 6 }}>{value}</div>
+    </div>
+  );
+}
+
+function ChartCard({ title, children }) {
+  return (
+    <div
+      style={{
+        flex: "1 1 420px",
+        background: "#fff",
+        padding: 16,
+        borderRadius: 12,
+      }}
+    >
+      <div style={{ color: "#c2187a", fontWeight: 700, marginBottom: 6 }}>
+        {title}
+      </div>
+      {children}
+    </div>
+  );
+}
+
+function CycleCard({ cycle }) {
+  return (
+    <div
+      style={{
+        background: "#fff",
+        padding: 14,
+        borderRadius: 12,
+        display: "flex",
+        justifyContent: "space-between",
+      }}
+    >
+      <div style={{ flex: 1, paddingRight: 12 }}>
+        <div style={{ fontWeight: 700, color: "#d63384" }}>
+          {new Date(cycle.startDate).toDateString()} →{" "}
+          {new Date(cycle.endDate).toDateString()}
+        </div>
+
+        <div style={{ color: "#666", marginTop: 6 }}>
+          {cycle.cycleLength} days · Health: {cycle.cycleHealthScore}%
+        </div>
+
+        <p style={{ color: "#444", marginTop: 8 }}>
+          {(cycle.summaryText || "").slice(0, 200)}
+          {cycle.summaryText?.length > 200 ? "..." : ""}
+        </p>
+      </div>
+
+      <div style={{ textAlign: "right", minWidth: 150 }}>
+        <div style={{ fontSize: 13, color: "#666" }}>Next Expected</div>
+        <div style={{ fontWeight: "700", marginTop: 4 }}>
+          {cycle.nextPredictedDate || "—"}
+        </div>
+
+        <Link href={`/history/${cycle.id}`}>
+          <button
+            style={{
+              marginTop: 10,
+              padding: "8px 10px",
+              borderRadius: 8,
+              border: "none",
+              background: "#ff7aa2",
+              color: "#fff",
+            }}
+          >
+            View Details
+          </button>
+        </Link>
+      </div>
     </div>
   );
 }
