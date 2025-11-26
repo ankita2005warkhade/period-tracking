@@ -6,12 +6,11 @@ import { doc, setDoc, serverTimestamp, collection, addDoc } from "firebase/fires
 import { useRouter } from "next/navigation";
 
 import dynamic from "next/dynamic";
-import Navbar from "../navbar/page";
+import Navbar from "@/components/Navbar";
 // import Calendar from "react-calendar";
 import "react-calendar/dist/Calendar.css";
-import Image from "next/image";
 
-// ⛔ fix hydration error – disable server rendering
+//  fix hydration error – disable server rendering
 const Calendar = dynamic(() => import("react-calendar"), {
   ssr: false,
 });
@@ -67,13 +66,7 @@ export default function LogPeriodPage() {
 
       {/* Welcome Section */}
       <div className="welcome-box">
-        <Image
-          src="/cute-calendar.png" 
-          alt="Cute calendar girl"
-          width={120}
-          height={120}
-          className="welcome-sticker"
-        />
+       
         <h2 className="welcome-text">Hey Beautiful! 💕</h2>
         <p className="welcome-sub">Let’s begin tracking your cycle together.</p>
       </div>

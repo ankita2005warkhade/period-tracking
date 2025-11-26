@@ -1,11 +1,16 @@
 /* Global Styles */
 
+:root {
+  --navbar-height: 68px; /* adjust if you change navbar padding/size */
+}
+
 /* Basic setup */
 body {
   font-family: "Poppins", sans-serif;
   background-color: #f3f4f6;
   margin: 0;
   padding: 0;
+  padding-top: var(--navbar-height); /* ensure content not hidden by fixed navbar */
 }
 
 /* Form container */
@@ -52,7 +57,7 @@ button {
   width: 100%;
   padding: 10px;
   background-color: #0070f3;
-  color:black;
+  color: black;
   border: none;
   border-radius: 8px;
   cursor: pointer;
@@ -92,45 +97,130 @@ button:hover {
   margin-top: 100px;
   color: #333;
 }
+
 /* ----- NAVBAR ----- */
+/* Main fixed navbar wrapper */
 .navbar {
   width: 100%;
   background: #ffffff;
-  padding: 15px 30px;
-  box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
+  box-shadow: 0 2px 6px rgba(255, 80, 140, 0.08);
   position: fixed;
   top: 0;
-}
-
-.navbar-logo {
-  font-size: 22px;
-  font-weight: bold;
-  color: #d63384;
-}
-
-.navbar-links {
+  left: 0;
+  z-index: 999;
+  height: var(--navbar-height);
   display: flex;
-  gap: 20px;
-  font-size: 16px;
+  align-items: center;
 }
 
-.navbar-logout-btn {
-  background: none;
+/* center content and limit width */
+.nav-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 20px;
+  width: 100%;
+
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+/* LEFT: logo + app name */
+.nav-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+/* optional small logo image styling */
+.nav-left img.nav-logo-img {
+  height: 36px;
+  width: auto;
+  display: block;
+}
+
+/* app name text */
+.nav-logo-text {
+  font-size: 22px;
+  font-weight: 700;
+  color: #ff4fa3;
+  line-height: 1;
+}
+
+/* RIGHT: links and buttons */
+.nav-right {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+/* simple inline links */
+.nav-link {
+  text-decoration: none;
+  font-size: 15px;
+  color: #444;
+  font-weight: 500;
+  padding: 6px 8px;
+  border-radius: 6px;
+}
+
+.nav-link:hover {
+  color: #ff4fa3;
+  background: rgba(255, 79, 163, 0.04);
+}
+
+/* Buttons in navbar */
+.nav-btn {
   border: none;
-  color: red;
+  padding: 7px 14px;
+  font-size: 14px;
+  border-radius: 10px;
   cursor: pointer;
-  font-size: 16px;
+  font-weight: 600;
+}
+
+/* Logout (primary) */
+.logout-btn {
+  background: #ff4fa3;
+  color: #fff;
+  border: none;
+}
+
+/* Transparent login */
+.login-btn {
+  background: transparent;
+  color: #ff4fa3;
+  border: 1px solid #ff4fa3;
+}
+
+/* Signup */
+.signup-btn {
+  background: #ff4fa3;
+  color: white;
+}
+
+/* small responsiveness for navbar */
+@media (max-width: 780px) {
+  .nav-logo-text {
+    font-size: 18px;
+  }
+  .nav-right {
+    gap: 10px;
+  }
+  .nav-link {
+    font-size: 14px;
+    padding: 6px;
+  }
 }
 
 /* ----- DASHBOARD ----- */
 .dashboard-container {
   min-height: 100vh;
   background: #ffe6ef;
-  padding-top: 100px;
+  padding-top: 0px;  /* FIXED */
 }
+
 
 .dashboard-hero {
   text-align: center;
@@ -224,6 +314,7 @@ button:hover {
   cursor: pointer;
   font-size: 16px;
 }
+
 /* -------- Symptoms Page -------- */
 .symptoms-container {
   min-height: 100vh;
@@ -511,57 +602,6 @@ button:hover {
 .summary-card p {
   line-height: 1.6;
 }
-/* NAVBAR CONTAINER */
-.navbar {
-  width: 100%;
-  background: white;
-  padding: 14px 20px;
-  box-shadow: 0 2px 6px rgba(255, 80, 140, 0.15);
-  position: fixed;
-  top: 0;
-  left: 0;
-  z-index: 50;
-
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-/* LEFT SIDE */
-.nav-left .nav-logo {
-  font-size: 22px;
-  font-weight: bold;
-  color: #ff4fa3;
-}
-
-/* RIGHT SIDE */
-.nav-right {
-  display: flex;
-  gap: 20px;
-  align-items: center;
-}
-
-/* Links */
-.nav-link {
-  text-decoration: none;
-  font-size: 14px;
-  color: #444;
-  font-weight: 500;
-}
-
-.nav-link:hover {
-  color: #ff4fa3;
-}
-
-/* Buttons */
-.nav-btn {
-  border: none;
-  padding: 6px 14px;
-  font-size: 14px;
-  border-radius: 8px;
-  cursor: pointer;
-  font-weight: 500;
-}
 
 .login-btn {
   background-color: #ff4fa3;
@@ -581,8 +621,9 @@ button:hover {
 .nav-btn:hover {
   opacity: 0.85;
 }
+
 /* ============================================
-   SYMPTOMS PAGE — CLEAN & OPTIMIZED
+  SYMPTOMS PAGE — CLEAN & OPTIMIZED
 ============================================ */
 
 .symptoms-container {
@@ -675,7 +716,7 @@ button:hover {
 }
 
 /* ============================
-   WATER TRACKER
+  WATER TRACKER
 =============================== */
 .water-counter {
   display: flex;
@@ -702,7 +743,7 @@ button:hover {
 }
 
 /* ============================
-   SELF-CARE GRID
+  SELF-CARE GRID
 =============================== */
 .selfcare-grid {
   display: grid;
@@ -725,7 +766,7 @@ button:hover {
 }
 
 /* ============================
-   NOTE INPUT
+  NOTE INPUT
 =============================== */
 .note-input {
   width: 100%;
@@ -740,7 +781,7 @@ button:hover {
 }
 
 /* ============================
-   ACTION BUTTONS
+  ACTION BUTTONS
 =============================== */
 .symptoms-actions {
   margin-top: 25px;
@@ -768,7 +809,7 @@ button:hover {
 }
 
 /* ============================
-   AI INSIGHT BOX
+  AI INSIGHT BOX
 =============================== */
 .ai-result {
   background: #fff7fc;
@@ -852,7 +893,7 @@ button:hover {
 
 .dashboard-card-title {
   color: white;
-  font-weight: 6Page00;
+  font-weight: 600;
 }
 
 /* Make responsive */
@@ -972,154 +1013,149 @@ button:hover {
 
 @keyframes fadeIn {
   from { opacity: 0; transform: translateY(20px); }
-  to { opacity: 1; transform: translateY(0); }
+  to { opacity: 1; transform: translateY(0);
+  }
 }
-.modal-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background: rgba(0,0,0,0.45);
+/* FULL PAGE BACKGROUND */
+.form-page {
+  min-height: 100vh;
+  background: #ffe6ef; /* light pink */
   display: flex;
   justify-content: center;
   align-items: center;
-  z-index: 1000;
-  animation: fadeIn 0.2s ease;
+  padding-top: var(--navbar-height);
 }
 
-.modal-box {
-  width: 90%;
-  max-width: 380px;
-  background: white;
-  padding: 25px;
-  border-radius: 18px;
-  box-shadow: 0 8px 30px rgba(0,0,0,0.15);
-  animation: popIn 0.25s ease;
-}
-
-.modal-title {
-  font-size: 20px;
-  font-weight: 600;
-  margin-bottom: 10px;
-  text-align: center;
-  color: #ff5a92;
-}
-
-.modal-text {
-  font-size: 15px;
-  color: #444;
-  margin-bottom: 20px;
-  line-height: 1.5;
-  max-height: 300px;
-  overflow-y: auto;
-}
-
-.close-btn {
-  background: #ff5a92;
-  color: white;
-  border: none;
-  padding: 12px 18px;
-  border-radius: 10px;
-  cursor: pointer;
-  width: 100%;
-  font-size: 15px;
-  font-weight: 500;
-}
-
-.close-btn:hover {
-  background: #e04878;
-}
-
-@keyframes popIn {
-  0% { transform: scale(0.85); opacity: 0; }
-  100% { transform: scale(1); opacity: 1; }
-}
-
-@keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
-}
-/* Popup Background Overlay */
-.popup-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background: rgba(0, 0, 0, 0.45);
-  display: flex;
-  justify-content: center;
-  align-items: center;  /* ensures perfect vertical center */
-  padding: 15px;
-  z-index: 9999;
-}
-
-/* Popup Card */
-.popup-card {
+/* FORM CARD */
+.form-container {
   background: #ffffff;
-  width: 100%;
-  max-width: 550px;
-  border-radius: 22px;
-  padding: 25px 22px;
-  box-shadow: 0px 6px 25px rgba(0, 0, 0, 0.25);
-  max-height: 85vh;
-  overflow-y: auto;
-  animation: fadeInUp 0.3s ease;
-}
-
-/* Animation */
-@keyframes fadeInUp {
-  from {
-    opacity: 0;
-    transform: translateY(20px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0px);
-  }
-}
-
-/* Title */
-.popup-title {
-  font-size: 1.6rem;
-  font-weight: 700;
-  margin-bottom: 15px;
+  width: 350px;
+  padding: 30px;
+  border-radius: 18px;
+  box-shadow: 0 6px 18px rgba(255, 80, 130, 0.15);
   text-align: center;
-  color: #f28c24;
 }
 
-/* Insight Text */
-.popup-text {
-  font-family: 'Inter', sans-serif;
-  font-size: 0.95rem;
-  line-height: 1.6;
-  white-space: pre-wrap;
-  color: #444;
+/* TITLE */
+.form-container h2 {
+  color: #d63384; /* dark pink */
+  margin-bottom: 20px;
+  font-size: 26px;
+  font-weight: 700;
 }
 
-/* Close Button */
-.popup-close-btn {
-  width: 100%;
-  margin-top: 20px;
+/* LABEL */
+.form-group label {
+  color: #c2187a;
+  font-weight: 600;
+}
+
+/* INPUT FIELD STYLE */
+.form-container input {
   padding: 12px;
-  border: none;
-  border-radius: 12px;
-  background: #ff4f7b;
+  border-radius: 10px;
+  border: 1px solid #ffb6d6;
+  font-size: 15px;
+  background: #fff5fa;
+}
+
+.form-container input:focus {
+  border-color: #ff4fa3;
+  background: #ffe4ef;
+  outline: none;
+}
+
+/* PINK BUTTON */
+.form-container button {
+  background-color: #d63384; /* dark pink */
   color: white;
-  font-size: 1rem;
+  border: none;
+  padding: 12px;
+  width: 100%;
+  font-size: 16px;
+  border-radius: 10px;
   font-weight: 600;
   cursor: pointer;
+  margin-top: 10px;
 }
 
-.popup-close-btn:hover {
-  background: #e0446e;
-}
-body {
-    background: #fde6ee; 
-    display: flex;
-    justify-content: center;
-    padding-top: 60px;
-    font-family: Arial, sans-serif;
+.form-container button:hover {
+  background-color: #b61c6a;
 }
 
+/* Redirect link */
+.redirect-text a {
+  color: #d63384;
+  font-weight: 600;
+}
+
+.redirect-text a:hover {
+  text-decoration: underline;
+}
+
+.about-container {
+  max-width: 850px;
+  margin: 100px auto;
+  background: #fff9fc;
+  padding: 30px;
+  border-radius: 14px;
+  border: 1px solid #ffd3e8;
+  box-shadow: 0 4px 12px rgba(255, 120, 170, 0.15);
+}
+
+.about-title {
+  color: #d63384;
+  text-align: center;
+  font-size: 32px;
+  margin-bottom: 20px;
+  font-weight: 700;
+}
+
+.about-text {
+  font-size: 15px;
+  line-height: 1.7;
+  color: #444;
+  margin-bottom: 15px;
+}
+
+/* TEAM SECTION */
+.about-team {
+  margin-top: 30px;
+  padding: 20px;
+  background: #fff;
+  border-radius: 14px;
+  border: 1px solid #ffd3e8;
+  box-shadow: 0px 4px 10px rgba(255, 130, 170, 0.1);
+}
+
+.team-title {
+  text-align: center;
+  font-size: 24px;
+  color: #d63384;
+  margin-bottom: 12px;
+  font-weight: 700;
+}
+
+.team-text {
+  text-align: center;
+  font-size: 15px;
+  color: #555;
+  margin-bottom: 15px;
+}
+
+.team-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.team-list li {
+  padding: 8px 0;
+  border-bottom: 1px solid #ffe0ee;
+  font-size: 15px;
+  color: #333;
+}
+
+.team-list li:last-child {
+  border-bottom: none;
+}

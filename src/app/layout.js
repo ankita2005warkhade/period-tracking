@@ -1,15 +1,23 @@
-// 📁 src/app/layout.js
 import "./globals.css";
+import Navbar from "@/components/Navbar";
 
 export const metadata = {
-  title: "My App",
-  description: "Firebase Auth Example",
+  title: "Period Track",
+  description: "Period Tracking App",
 };
 
 export default function RootLayout({ children }) {
   return (
     <html lang="en">
-      <body>{children}</body>
+      <body>
+        {/* Navbar always visible */}
+        <Navbar />
+
+        {/* WRAPPER (adds only 1 padding for all pages) */}
+        <div className="page-wrapper">
+          {children}
+        </div>
+      </body>
     </html>
   );
 }
