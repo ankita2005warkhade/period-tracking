@@ -174,19 +174,7 @@ function computeWarning({
     "high fever",
   ];
 
-  // if any life-threat present today -> urgent
-  for (const s of todaysDangerousSymptoms) {
-    const n = norm(s);
-    for (const t of LIFE_THREAT_TOKENS) {
-      if (n.includes(t) || t.includes(n) || n === t) {
-        return {
-          warningText:
-            "Seek urgent medical attention — immediate emergency signs detected.",
-          smallTip: "Call emergency services now or go to the nearest ER.",
-        };
-      }
-    }
-  }
+  
 
   // if no history available -> fallback: check counts inside today's info only (less strict)
   if (!history) {
@@ -194,7 +182,7 @@ function computeWarning({
     if (todaysFlowIsHeavy) {
       return {
         warningText:
-          "Heavy flow detected today. Monitor bleeding and rest; contact clinician if it persists.",
+          "Heavy flow detected today. Monitor bleeding and rest, contact clinician if it persists.",
         smallTip: "Track heavy days; consider contacting your clinician.",
       };
     }
