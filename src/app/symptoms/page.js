@@ -10,7 +10,7 @@ import {
   query,
   getDocs,
   orderBy,
-  updateDoc
+  updateDoc,
 } from "firebase/firestore";
 import { useRouter } from "next/navigation";
 
@@ -115,7 +115,7 @@ export default function SymptomsPage() {
             "users",
             user.uid,
             "cycles",
-            data.activeCycleId
+            data.activeCycleId,
           );
           const cycleSnap = await getDoc(cycleRef);
 
@@ -145,14 +145,16 @@ export default function SymptomsPage() {
   // Toggle symptom selection
   const toggleSymptom = (symptom) => {
     setSelectedSymptoms((prev) =>
-      prev.includes(symptom) ? prev.filter((s) => s !== symptom) : [...prev, symptom]
+      prev.includes(symptom)
+        ? prev.filter((s) => s !== symptom)
+        : [...prev, symptom],
     );
   };
 
   // Toggle self-care selection
   const toggleSelfCare = (item) => {
     setSelectedSelfCare((prev) =>
-      prev.includes(item) ? prev.filter((x) => x !== item) : [...prev, item]
+      prev.includes(item) ? prev.filter((x) => x !== item) : [...prev, item],
     );
   };
 
@@ -166,7 +168,7 @@ export default function SymptomsPage() {
         auth.currentUser.uid,
         "cycles",
         activeCycleId,
-        "dailyLogs"
+        "dailyLogs",
       );
       const q = query(logsRef, orderBy("date", "asc"));
       const snapshot = await getDocs(q);
@@ -185,7 +187,10 @@ export default function SymptomsPage() {
     for (const s of todaySymptoms) {
       for (const danger of DANGEROUS_SYMPTOMS) {
         if (danger === "Irregular Flow Pattern") continue;
-        if (s.toLowerCase().includes(danger.toLowerCase()) || danger.toLowerCase().includes(s.toLowerCase())) {
+        if (
+          s.toLowerCase().includes(danger.toLowerCase()) ||
+          danger.toLowerCase().includes(s.toLowerCase())
+        ) {
           warnings.push(`${danger} detected today`);
         }
       }
@@ -220,9 +225,18 @@ export default function SymptomsPage() {
       }
       for (const danger of DANGEROUS_SYMPTOMS) {
         if (danger === "Irregular Flow Pattern") continue;
-        if (s.toLowerCase().includes(danger.toLowerCase()) && prevDangerCounts[s]) {
-          if (!warnings.includes(`${danger} has occurred on multiple days — repeated symptom`)) {
-            warnings.push(`${danger} has occurred on multiple days — repeated symptom`);
+        if (
+          s.toLowerCase().includes(danger.toLowerCase()) &&
+          prevDangerCounts[s]
+        ) {
+          if (
+            !warnings.includes(
+              `${danger} has occurred on multiple days — repeated symptom`,
+            )
+          ) {
+            warnings.push(
+              `${danger} has occurred on multiple days — repeated symptom`,
+            );
           }
         }
       }
@@ -268,7 +282,7 @@ export default function SymptomsPage() {
         "cycles",
         activeCycleId,
         "dailyLogs",
-        dateId
+        dateId,
       );
 
       const logData = {
@@ -296,7 +310,9 @@ export default function SymptomsPage() {
 
       const existing = cycleSnap.exists() ? cycleSnap.data() : {};
 
-      const existingRedFlags = Array.isArray(existing.redFlags) ? existing.redFlags : [];
+      const existingRedFlags = Array.isArray(existing.redFlags)
+        ? existing.redFlags
+        : [];
       const newRedFlags = [...existingRedFlags, ...warnings].filter(Boolean);
       const uniqueRedFlags = [...new Set(newRedFlags)];
 
@@ -339,7 +355,10 @@ export default function SymptomsPage() {
 
     try {
       // compute warnings first (so AI can consider them)
-      const { warnings } = await computeWarnings(selectedSymptoms, selectedFlowLevel);
+      const { warnings } = await computeWarnings(
+        selectedSymptoms,
+        selectedFlowLevel,
+      );
 
       // Send payload to AI including warnings & previous flags possibility
       const payload = {
@@ -500,7 +519,17 @@ export default function SymptomsPage() {
             {loadingAI ? "Getting Insight..." : "Get Insight / Log Day"}
           </button>
 
-          <button className="lastday-btn" onClick={() => router.push("/summary")}>
+          <button
+            className="primary-btn"
+            onClick={() => router.push("/selfCareTrack")}
+          >
+            Track Self-Care
+          </button>
+
+          <button
+            className="lastday-btn"
+            onClick={() => router.push("/summary")}
+          >
             This is Last Day
           </button>
         </div>
@@ -525,7 +554,6 @@ export default function SymptomsPage() {
         )}
 
         {/* Popup UI intentionally removed to avoid duplicate insight display */}
-
       </div>
     </div>
   );

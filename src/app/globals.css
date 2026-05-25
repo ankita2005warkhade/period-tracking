@@ -1159,3 +1159,103 @@ button:hover {
 .team-list li:last-child {
   border-bottom: none;
 }
+/* ==========================================
+   HOME FEATURE CARDS
+========================================== */
+
+.home-feature-section {
+  width: 90%;
+  max-width: 1200px;
+
+  margin: 20px auto 60px;
+
+  display: grid;
+
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+
+  gap: 24px;
+}
+
+.feature-card-link {
+  text-decoration: none;
+}
+
+.feature-home-card {
+
+  background: white;
+
+  border-radius: 18px;
+
+  padding: 28px 24px;
+
+  box-shadow: 0 4px 12px rgba(255, 120, 170, 0.12);
+
+  border: 1px solid #ffd3e8;
+
+  cursor: pointer;
+
+  transition: 0.3s ease;
+
+  min-height: 220px;
+
+  display: flex;
+
+  flex-direction: column;
+
+  justify-content: center;
+
+  align-items: flex-start;
+}
+
+.feature-home-card:hover {
+
+  transform: translateY(-6px);
+
+  box-shadow: 0 8px 24px rgba(255, 100, 170, 0.22);
+
+  background: #fff8fc;
+}
+
+.feature-home-icon {
+
+  font-size: 42px;
+
+  margin-bottom: 18px;
+}
+
+.feature-home-title {
+
+  color: #d63384;
+
+  font-size: 24px;
+
+  font-weight: 700;
+
+  margin-bottom: 12px;
+}
+
+.feature-home-text {
+
+  color: #555;
+
+  line-height: 1.7;
+
+  font-size: 15px;
+}
+
+/* MOBILE RESPONSIVE */
+
+@media (max-width: 768px) {
+
+  .home-feature-section {
+
+    width: 92%;
+
+    grid-template-columns: 1fr;
+  }
+
+  .feature-home-card {
+
+    min-height: auto;
+  }
+}

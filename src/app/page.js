@@ -85,6 +85,103 @@ export default function HomePage() {
         </div>
 
       </div>
+      {/* HOME FEATURE CARDS */}
+
+<div className="home-feature-section">
+
+  {/* HISTORY */}
+  <Link href="/history" className="feature-card-link">
+    <div className="feature-home-card">
+
+      <div className="feature-home-icon">
+        📖
+      </div>
+
+      <h2 className="feature-home-title">
+        History
+      </h2>
+
+      <p className="feature-home-text">
+        View your cycle history, moods,
+        symptoms and wellness insights.
+      </p>
+
     </div>
+  </Link>
+
+  {/* GENERATE REPORT */}
+  <div
+    className="feature-home-card"
+    onClick={() => {
+      const reportBtn =
+        document.querySelector(".generate-report-trigger");
+
+      if (reportBtn) {
+        reportBtn.click();
+      }
+    }}
+  >
+
+    <div className="feature-home-icon">
+      📄
+    </div>
+
+    <h2 className="feature-home-title">
+      Generate Report
+    </h2>
+
+    <p className="feature-home-text">
+      Download your complete period
+      tracking and wellness PDF report.
+    </p>
+
+  </div>
+
+  {/* TRACK PERIOD */}
+  <div
+    className="feature-home-card"
+    onClick={handlePeriodTrack}
+  >
+
+    <div className="feature-home-icon">
+      🌸
+    </div>
+
+    <h2 className="feature-home-title">
+      Track Your Period
+    </h2>
+
+    <p className="feature-home-text">
+      Start or continue your cycle
+      tracking with AI wellness insights.
+    </p>
+
+  </div>
+
+  {/* SELF CARE */}
+  <Link href="/selfCareTrack" className="feature-card-link">
+
+    <div className="feature-home-card">
+
+      <div className="feature-home-icon">
+        🧘‍♀️
+      </div>
+
+      <h2 className="feature-home-title">
+        Self-Care Track
+      </h2>
+
+      <p className="feature-home-text">
+        Track hydration, sleep,
+        meditation, energy and wellness.
+      </p>
+
+    </div>
+
+  </Link>
+
+</div>
+    </div>
+    
   );
 }

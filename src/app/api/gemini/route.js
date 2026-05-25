@@ -388,10 +388,55 @@ IMPORTANT:
 `;
 
     // Call Gemini
-    const genAI = new GoogleGenerativeAI(apiKey);
-    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
-    const result = await model.generateContent(prompt);
-    const insight = result.response?.text?.().trim?.() || "";
+   // Call Gemini
+const genAI = new GoogleGenerativeAI(apiKey);
+
+const model = genAI.getGenerativeModel({
+  model: "gemini-2.0-flash",
+});
+
+let insight = "";
+
+try {
+
+  const result = await model.generateContent(prompt);
+
+  insight =
+    result.response?.text?.().trim?.() || "";
+
+} catch (geminiError) {
+
+  console.error("Gemini quota/API error:", geminiError);
+
+  // HYBRID SAFE FALLBACK
+  insight = `✨ Insight
+
+🩷 Mood: ${mood || "Not provided"}
+🌸 Symptoms: ${symptoms.length ? symptoms.join(", ") : "None"}
+❤️ Flow Level: ${flowLevel || "Not provided"}
+
+🌼 What This Means
+- Hormonal changes may affect energy and mood.
+- Your body may need extra care today.
+
+💡 What Can Help
+- Drink enough water.
+- Eat healthy meals.
+- Take proper rest.
+- Use warm compress if needed.
+
+🧘 Self-care
+- Deep breathing.
+- Warm bath.
+- Gentle stretching.
+
+⚠️ Warning
+- ${specialWarningText}
+
+🌞 Reminder
+- You're doing great by tracking your health 💕
+`;
+}
 
     // If model fails, fallback to a server-crafted short insight (safe fallback)
     if (!insight) {
